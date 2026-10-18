@@ -8,7 +8,3 @@ Already installed? The app updates itself. The update installs when you close th
 
 - `tft_archipelago.apworld`: the APWorld for whoever generates the multiworld. Double-click it to install it into Archipelago 0.6.5 or newer.
 - `TFT-Archipelago-template.yaml`: the player options template. The app's **Setup** page also creates a YAML for you.
-
-## Support
-
-If you enjoy TFT Archipelago, you can support it on [Ko-fi](https://ko-fi.com/novytft).

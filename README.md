@@ -58,5 +58,3 @@ The APWorld tests run inside an Archipelago source checkout: copy `worlds/tft_ar
 ## License
 
 [MIT](LICENSE)
-
-If you enjoy TFT Archipelago, you can support it on [Ko-fi](https://ko-fi.com/novytft).
