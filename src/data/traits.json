@@ -1,0 +1,822 @@
+{
+  "metadata": {
+    "source": "https://raw.communitydragon.org/latest/cdragon/tft/en_us.json",
+    "setNumber": 18,
+    "setName": "Set10",
+    "championCount": 74,
+    "championCostCount": 91,
+    "traitBreakpointCount": 35,
+    "itemAliasCount": 41
+  },
+  "champions": {
+    "DA_18_Ahri": [
+      "Blossom",
+      "Spellweaver"
+    ],
+    "DA_18_Akali_AD": [
+      "Adaptor",
+      "Inferno",
+      "Ravager"
+    ],
+    "DA_18_Alistar": [
+      "Brawler",
+      "Elderwood"
+    ],
+    "DA_18_Alune": [
+      "Attuned",
+      "Lunar",
+      "Spellweaver"
+    ],
+    "DA_18_Aphelios": [
+      "Lunar",
+      "Rapidfire"
+    ],
+    "DA_18_Ashe": [
+      "Blossom",
+      "Hunter"
+    ],
+    "DA_18_Azir": [
+      "Blackthorn",
+      "Executioner",
+      "Summoner"
+    ],
+    "DA_18_Caitlyn": [
+      "Coven",
+      "Hunter"
+    ],
+    "DA_18_Camille": [
+      "Coven",
+      "Ravager"
+    ],
+    "DA_18_Cassiopeia": [
+      "Coven",
+      "Spellweaver"
+    ],
+    "DA_18_Diana": [
+      "Lunar",
+      "Ravager",
+      "Vanguard"
+    ],
+    "DA_18_ElderDragon": [
+      "Apex Predator",
+      "Riftbeast"
+    ],
+    "DA_18_Elise": [
+      "Coven",
+      "Vanguard"
+    ],
+    "DA_18_Ezreal": [
+      "Elderwood",
+      "Executioner"
+    ],
+    "DA_18_GnarSmall": [
+      "Brawler",
+      "Elderwood",
+      "Sprykin"
+    ],
+    "DA_18_Hecarim": [
+      "Elderwood",
+      "Vanguard"
+    ],
+    "DA_18_Ivern": [
+      "Greenfather"
+    ],
+    "DA_18_Kayle": [
+      "Rapidfire",
+      "Solar"
+    ],
+    "DA_18_Kennen": [
+      "Executioner",
+      "Inferno"
+    ],
+    "DA_18_KhaZix": [
+      "Rival"
+    ],
+    "DA_18_Kobuko": [
+      "Brawler",
+      "Sprykin"
+    ],
+    "DA_18_LeBlanc": [
+      "Elderwood",
+      "Spellweaver"
+    ],
+    "DA_18_Leona": [
+      "Defender",
+      "Solar"
+    ],
+    "DA_18_Lillia": [
+      "Defender",
+      "Fae"
+    ],
+    "DA_18_Lux_Coven": [
+      "Avatar",
+      "Coven"
+    ],
+    "DA_18_Lux_Elderwood": [
+      "Avatar",
+      "Elderwood"
+    ],
+    "DA_18_Lux_Fae": [
+      "Avatar",
+      "Fae"
+    ],
+    "DA_18_Lux_Inferno": [
+      "Avatar",
+      "Inferno"
+    ],
+    "DA_18_Lux_Moonbeam": [
+      "Avatar",
+      "Lunar"
+    ],
+    "DA_18_Lux_Primal": [
+      "Avatar",
+      "Primal"
+    ],
+    "DA_18_Lux_Sunbeam": [
+      "Avatar",
+      "Solar"
+    ],
+    "DA_18_Malphite": [
+      "Blackthorn",
+      "Monolith"
+    ],
+    "DA_18_Maokai": [
+      "Juggernaut",
+      "Old Growth"
+    ],
+    "DA_18_MasterYi_AD": [
+      "Adaptor",
+      "Blossom"
+    ],
+    "DA_18_Morgana": [
+      "Coven",
+      "Invoker"
+    ],
+    "DA_18_Ornn": [
+      "Defender",
+      "Elderwood"
+    ],
+    "DA_18_Rakan": [
+      "Fae",
+      "Juggernaut",
+      "Vanguard"
+    ],
+    "DA_18_Rammus": [
+      "Defender",
+      "Sprykin"
+    ],
+    "DA_18_RekSai": [
+      "Blackthorn",
+      "Brawler"
+    ],
+    "DA_18_Rengar": [
+      "Rival"
+    ],
+    "DA_18_Sejuani": [
+      "Juggernaut",
+      "Solar"
+    ],
+    "DA_18_Sentry": [
+      "Invoker",
+      "Riftbeast"
+    ],
+    "DA_18_Sett": [
+      "Blossom",
+      "Brawler"
+    ],
+    "DA_18_Shen": [
+      "Defender",
+      "Inferno"
+    ],
+    "DA_18_Sivir": [
+      "Hunter",
+      "Primal"
+    ],
+    "DA_18_Soraka": [
+      "Executioner",
+      "Flora Fatalis"
+    ],
+    "DA_18_Teemo": [
+      "Invoker",
+      "Sprykin"
+    ],
+    "DA_18_Tristana": [
+      "Fae",
+      "Hunter",
+      "Sprykin"
+    ],
+    "DA_18_Varus": [
+      "Inferno",
+      "Rapidfire"
+    ],
+    "DA_18_Veigar": [
+      "Blackthorn",
+      "Spellweaver",
+      "Sprykin"
+    ],
+    "DA_18_Warwick": [
+      "Blackthorn",
+      "Ravager"
+    ],
+    "DA_18_Xayah": [
+      "Elderwood",
+      "Fae",
+      "Rapidfire"
+    ],
+    "DA_18_Yorick": [
+      "Blossom",
+      "Juggernaut",
+      "Summoner"
+    ],
+    "DA_18_Yunara": [
+      "Blossom",
+      "Executioner"
+    ],
+    "DA_18_Zyra": [
+      "Summoner",
+      "Thornmaiden"
+    ],
+    "DA_Amumu18": [
+      "Inferno",
+      "Juggernaut"
+    ],
+    "DA_Brambleback18": [
+      "Ravager",
+      "Riftbeast"
+    ],
+    "DA_Cinderling18": [
+      "Hunter",
+      "Riftbeast"
+    ],
+    "DA_CrimsonRaptor18": [
+      "Rapidfire",
+      "Riftbeast",
+      "Summoner"
+    ],
+    "DA_Draven18": [
+      "Bounty Seeker"
+    ],
+    "DA_Fiddlesticks18": [
+      "Defender",
+      "Flora Fatalis",
+      "Spellweaver"
+    ],
+    "DA_Gromp18_AP": [
+      "Adaptor",
+      "Riftbeast"
+    ],
+    "DA_Karma18": [
+      "Blossom",
+      "Spellweaver"
+    ],
+    "DA_KogMaw18_AD": [
+      "Adaptor",
+      "Caustic",
+      "Invoker"
+    ],
+    "DA_Krug18": [
+      "Brawler",
+      "Riftbeast"
+    ],
+    "DA_Lux18_Base": [
+      "Avatar"
+    ],
+    "DA_Lux18_Blackthorn": [
+      "Avatar",
+      "Blackthorn"
+    ],
+    "DA_Lux18_Blossom": [
+      "Avatar",
+      "Blossom"
+    ],
+    "DA_Murkwolf18": [
+      "Ravager",
+      "Riftbeast"
+    ],
+    "DA_Nidalee18_AP": [
+      "Adaptor",
+      "Primal"
+    ],
+    "DA_Scuttlecrab18": [
+      "Juggernaut",
+      "Riftbeast"
+    ],
+    "DA_Sentinel18": [
+      "Invoker",
+      "Riftbeast",
+      "Vanguard"
+    ],
+    "DA_Taric18": [
+      "Emerald Aspect",
+      "Vanguard"
+    ],
+    "DA_Vi18": [
+      "Juggernaut",
+      "Primal"
+    ]
+  },
+  "championCosts": {
+    "DA_18_Ahri": 4,
+    "DA_18_Akali_AD": 1,
+    "DA_18_Alistar": 2,
+    "DA_18_Alune": 5,
+    "DA_18_Aphelios": 4,
+    "DA_18_Ashe": 5,
+    "DA_18_Azir": 3,
+    "DA_18_Caitlyn": 2,
+    "DA_18_Camille": 1,
+    "DA_18_Cassiopeia": 3,
+    "DA_18_Diana": 3,
+    "DA_18_ElderDragon": 5,
+    "DA_18_Elise": 2,
+    "DA_18_Ezreal": 4,
+    "DA_18_GnarSmall": 5,
+    "DA_18_Hecarim": 3,
+    "DA_18_Ivern": 5,
+    "DA_18_Kayle": 2,
+    "DA_18_Kennen": 5,
+    "DA_18_KhaZix": 3,
+    "DA_18_Kobuko": 1,
+    "DA_18_LeBlanc": 2,
+    "DA_18_Leona": 1,
+    "DA_18_Lillia": 4,
+    "DA_18_Lux_Coven": 5,
+    "DA_18_Lux_Elderwood": 5,
+    "DA_18_Lux_Fae": 5,
+    "DA_18_Lux_Inferno": 5,
+    "DA_18_Lux_Moonbeam": 5,
+    "DA_18_Lux_Primal": 5,
+    "DA_18_Lux_Sunbeam": 5,
+    "DA_18_Malphite": 4,
+    "DA_18_Maokai": 5,
+    "DA_18_MasterYi_AD": 3,
+    "DA_18_Morgana": 4,
+    "DA_18_Ornn": 1,
+    "DA_18_Rakan": 1,
+    "DA_18_Rammus": 3,
+    "DA_18_RekSai": 1,
+    "DA_18_Rengar": 3,
+    "DA_18_Sejuani": 2,
+    "DA_18_Sentry": 1,
+    "DA_18_Sett": 4,
+    "DA_18_Shen": 2,
+    "DA_18_Sivir": 4,
+    "DA_18_Soraka": 4,
+    "DA_18_Teemo": 2,
+    "DA_18_Tristana": 3,
+    "DA_18_Varus": 1,
+    "DA_18_Veigar": 1,
+    "DA_18_Warwick": 2,
+    "DA_18_Xayah": 1,
+    "DA_18_Yorick": 1,
+    "DA_18_Yunara": 2,
+    "DA_18_Zyra": 4,
+    "DA_Amumu18": 4,
+    "DA_Brambleback18": 4,
+    "DA_Cinderling18": 1,
+    "DA_CrimsonRaptor18": 3,
+    "DA_Draven18": 5,
+    "DA_Fiddlesticks18": 3,
+    "DA_Gromp18_AP": 2,
+    "DA_Karma18": 1,
+    "DA_KogMaw18_AD": 3,
+    "DA_Krug18": 3,
+    "DA_Lux18_Base": 5,
+    "DA_Lux18_Blackthorn": 5,
+    "DA_Lux18_Blossom": 5,
+    "DA_Murkwolf18": 2,
+    "DA_Nidalee18_AP": 4,
+    "DA_Scuttlecrab18": 2,
+    "DA_Sentinel18": 4,
+    "DA_Taric18": 5,
+    "DA_Vi18": 3,
+    "TFT_ArmoryKeyCompleted": 8,
+    "TFT_ArmoryKeyComponent": 8,
+    "TFT_ArmoryKeyOrnn": 8,
+    "TFT_ArmoryKeySupport": 8,
+    "TFT_BlueGolem": 1,
+    "TFT_ElderDragon": 1,
+    "TFT_Krug": 1,
+    "TFT_Murkwolf": 1,
+    "TFT_MurkwolfMini": 1,
+    "TFT_Razorbeak": 1,
+    "TFT_RazorbeakMini": 1,
+    "TFT_RiftHerald": 1,
+    "TFT_TrainingDummy": 1,
+    "TFT_Voidspawn": 1,
+    "TFT5_EmblemArmoryKey": 8,
+    "TFT6_MercenaryChest": 11,
+    "TFT9_SLIME_Crab": 1
+  },
+  "traitBreakpoints": {
+    "Adaptor": [
+      2,
+      3,
+      4
+    ],
+    "Apex Predator": [
+      1
+    ],
+    "Attuned": [
+      1
+    ],
+    "Avatar": [
+      1
+    ],
+    "Blackthorn": [
+      2,
+      4,
+      6
+    ],
+    "Blossom": [
+      3,
+      5,
+      7,
+      9,
+      11
+    ],
+    "Bounty Seeker": [
+      1
+    ],
+    "Brawler": [
+      2,
+      4,
+      6
+    ],
+    "Caustic": [
+      1
+    ],
+    "Coven": [
+      3,
+      4,
+      5,
+      7
+    ],
+    "Defender": [
+      2,
+      4,
+      6
+    ],
+    "Elderwood": [
+      3,
+      5,
+      7,
+      9,
+      11
+    ],
+    "Emerald Aspect": [
+      1
+    ],
+    "Executioner": [
+      2,
+      3,
+      4
+    ],
+    "Fae": [
+      2,
+      4
+    ],
+    "Flora Fatalis": [
+      1,
+      2
+    ],
+    "Greenfather": [
+      1
+    ],
+    "Hunter": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "Inferno": [
+      2,
+      3,
+      5,
+      7
+    ],
+    "Invoker": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "Juggernaut": [
+      2,
+      4,
+      6
+    ],
+    "Lunar": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "Monolith": [
+      1
+    ],
+    "Old Growth": [
+      1
+    ],
+    "Primal": [
+      2,
+      4
+    ],
+    "Rapidfire": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "Ravager": [
+      2,
+      4,
+      6
+    ],
+    "Riftbeast": [
+      3,
+      5,
+      7,
+      10
+    ],
+    "Rival": [
+      1,
+      2
+    ],
+    "Solar": [
+      3
+    ],
+    "Spellweaver": [
+      2,
+      4,
+      6
+    ],
+    "Sprykin": [
+      3,
+      5,
+      7
+    ],
+    "Summoner": [
+      2,
+      3
+    ],
+    "Thornmaiden": [
+      1
+    ],
+    "Vanguard": [
+      2,
+      4,
+      6
+    ]
+  },
+  "traitNames": {
+    "DA_18_Adaptor": "Adaptor",
+    "DA_18_ApexPredator": "Apex Predator",
+    "DA_18_Battlemage": "Monolith",
+    "DA_18_Blackthorn": "Blackthorn",
+    "DA_18_Blossom": "Blossom",
+    "DA_18_Brawler": "Brawler",
+    "DA_18_Caustic": "Caustic",
+    "DA_18_Coven": "Coven",
+    "DA_18_Defender": "Defender",
+    "DA_18_Eclipse": "Eclipse",
+    "DA_18_Elderwood": "Elderwood",
+    "DA_18_Executioner": "Executioner",
+    "DA_18_Fae": "Fae",
+    "DA_18_Greenfather": "Greenfather",
+    "DA_18_Hunter": "Hunter",
+    "DA_18_Inferno": "Inferno",
+    "DA_18_Invoker": "Invoker",
+    "DA_18_Lunar": "Lunar",
+    "DA_18_LuxUniqueTrait": "Avatar",
+    "DA_18_Maokai_UniqueTrait": "Old Growth",
+    "DA_18_Rapidfire": "Rapidfire",
+    "DA_18_Rival": "Rival",
+    "DA_18_Slayer": "Ravager",
+    "DA_18_Solar": "Solar",
+    "DA_18_Spellweaver": "Spellweaver",
+    "DA_18_Sprykin": "Sprykin",
+    "DA_18_Summoner": "Summoner",
+    "DA_18_Vanguard": "Vanguard",
+    "DA_18_ZyraUniqueTrait": "Thornmaiden",
+    "DA_AluneUniqueTrait18": "Attuned",
+    "DA_DravenUniqueTrait18": "Bounty Seeker",
+    "DA_Emerald18": "Emerald Aspect",
+    "DA_FloraFatalis18": "Flora Fatalis",
+    "DA_Juggernaut18": "Juggernaut",
+    "DA_Primal18": "Primal",
+    "DA_Riftbeast18": "Riftbeast"
+  },
+  "championNames": {
+    "DA_18_Ahri": "Ahri",
+    "DA_18_Akali_AD": "Akali",
+    "DA_18_Alistar": "Alistar",
+    "DA_18_Alune": "Alune",
+    "DA_18_Aphelios": "Aphelios",
+    "DA_18_Ashe": "Ashe",
+    "DA_18_Azir": "Azir",
+    "DA_18_Caitlyn": "Caitlyn",
+    "DA_18_Camille": "Camille",
+    "DA_18_Cassiopeia": "Cassiopeia",
+    "DA_18_Diana": "Diana",
+    "DA_18_ElderDragon": "Elder Dragon",
+    "DA_18_Elise": "Elise",
+    "DA_18_Ezreal": "Ezreal",
+    "DA_18_GnarSmall": "Gnar",
+    "DA_18_Hecarim": "Hecarim",
+    "DA_18_Ivern": "Ivern",
+    "DA_18_Kayle": "Kayle",
+    "DA_18_Kennen": "Kennen",
+    "DA_18_KhaZix": "Kha'Zix",
+    "DA_18_Kobuko": "Kobuko",
+    "DA_18_LeBlanc": "LeBlanc",
+    "DA_18_Leona": "Leona",
+    "DA_18_Lillia": "Lillia",
+    "DA_18_Lux_Coven": "Lux (Coven)",
+    "DA_18_Lux_Elderwood": "Lux (Elderwood)",
+    "DA_18_Lux_Fae": "Lux (Fae)",
+    "DA_18_Lux_Inferno": "Lux (Inferno)",
+    "DA_18_Lux_Moonbeam": "Lux (Lunar)",
+    "DA_18_Lux_Primal": "Lux (Primal)",
+    "DA_18_Lux_Sunbeam": "Lux (Solar)",
+    "DA_18_Malphite": "Malphite",
+    "DA_18_Maokai": "Maokai",
+    "DA_18_MasterYi_AD": "Master Yi",
+    "DA_18_Morgana": "Morgana",
+    "DA_18_Ornn": "Ornn",
+    "DA_18_Rakan": "Rakan",
+    "DA_18_Rammus": "Rammus",
+    "DA_18_RekSai": "Rek'Sai",
+    "DA_18_Rengar": "Rengar",
+    "DA_18_Sejuani": "Sejuani",
+    "DA_18_Sentry": "Pebbles",
+    "DA_18_Sett": "Sett",
+    "DA_18_Shen": "Shen",
+    "DA_18_Sivir": "Sivir",
+    "DA_18_Soraka": "Soraka",
+    "DA_18_Teemo": "Teemo",
+    "DA_18_Tristana": "Tristana",
+    "DA_18_Varus": "Varus",
+    "DA_18_Veigar": "Veigar",
+    "DA_18_Warwick": "Warwick",
+    "DA_18_Xayah": "Xayah",
+    "DA_18_Yorick": "Yorick",
+    "DA_18_Yunara": "Yunara",
+    "DA_18_Zyra": "Zyra",
+    "DA_Amumu18": "Amumu",
+    "DA_Brambleback18": "Brambleback",
+    "DA_Cinderling18": "Cinderling",
+    "DA_CrimsonRaptor18": "Mama Beak",
+    "DA_Draven18": "Draven",
+    "DA_Fiddlesticks18": "Fiddlesticks",
+    "DA_Gromp18_AP": "Gromp",
+    "DA_Karma18": "Karma",
+    "DA_KogMaw18_AD": "Kog'Maw",
+    "DA_Krug18": "Krug",
+    "DA_Lux18_Base": "Lux",
+    "DA_Lux18_Blackthorn": "Lux (Blackthorn)",
+    "DA_Lux18_Blossom": "Lux (Blossom)",
+    "DA_Murkwolf18": "Murkwolf",
+    "DA_Nidalee18_AP": "Nidalee",
+    "DA_Scuttlecrab18": "Scuttlecrab",
+    "DA_Sentinel18": "Sentinel",
+    "DA_Taric18": "Taric",
+    "DA_Vi18": "Vi"
+  },
+  "championAliases": {
+    "DA_18_Lux_Coven": "DA_Lux18_Base",
+    "DA_18_Lux_Elderwood": "DA_Lux18_Base",
+    "DA_18_Lux_Fae": "DA_Lux18_Base",
+    "DA_18_Lux_Inferno": "DA_Lux18_Base",
+    "DA_18_Lux_Moonbeam": "DA_Lux18_Base",
+    "DA_18_Lux_Primal": "DA_Lux18_Base",
+    "DA_18_Lux_Sunbeam": "DA_Lux18_Base",
+    "DA_Lux18_Blackthorn": "DA_Lux18_Base",
+    "DA_Lux18_Blossom": "DA_Lux18_Base"
+  },
+  "items": {
+    "DA_18_EmblemBlackthorn": [
+      "Blackthorn"
+    ],
+    "DA_18_EmblemBlossom": [
+      "Blossom"
+    ],
+    "DA_18_EmblemBrawler": [
+      "Brawler"
+    ],
+    "DA_18_EmblemCoven": [
+      "Coven"
+    ],
+    "DA_18_EmblemDefender": [
+      "Defender"
+    ],
+    "DA_18_EmblemElderwood": [
+      "Elderwood"
+    ],
+    "DA_18_EmblemExecutioner": [
+      "Executioner"
+    ],
+    "DA_18_EmblemFae": [
+      "Fae"
+    ],
+    "DA_18_EmblemFloraFatalis": [
+      "Flora Fatalis"
+    ],
+    "DA_18_EmblemFloraFatalisAugment": [
+      "Flora Fatalis"
+    ],
+    "DA_18_EmblemHunter": [
+      "Hunter"
+    ],
+    "DA_18_EmblemInferno": [
+      "Inferno"
+    ],
+    "DA_18_EmblemInvoker": [
+      "Invoker"
+    ],
+    "DA_18_EmblemJuggernaut": [
+      "Juggernaut"
+    ],
+    "DA_18_EmblemLunar": [
+      "Lunar"
+    ],
+    "DA_18_EmblemPrimal": [
+      "Primal"
+    ],
+    "DA_18_EmblemRapidfire": [
+      "Rapidfire"
+    ],
+    "DA_18_EmblemSlayer": [
+      "Ravager"
+    ],
+    "DA_18_EmblemSpellweaver": [
+      "Spellweaver"
+    ],
+    "DA_18_EmblemSprykin": [
+      "Sprykin"
+    ],
+    "DA_18_EmblemVanguard": [
+      "Vanguard"
+    ],
+    "tft18_emblem_blackthorn.tex": [
+      "Blackthorn"
+    ],
+    "tft18_emblem_blossom.tex": [
+      "Blossom"
+    ],
+    "tft18_emblem_brawler.tex": [
+      "Brawler"
+    ],
+    "tft18_emblem_coven.tex": [
+      "Coven"
+    ],
+    "tft18_emblem_defender.tex": [
+      "Defender"
+    ],
+    "tft18_emblem_elderwood.tex": [
+      "Elderwood"
+    ],
+    "tft18_emblem_executioner.tex": [
+      "Executioner"
+    ],
+    "tft18_emblem_fae.tex": [
+      "Fae"
+    ],
+    "tft18_emblem_florafatalis.tex": [
+      "Flora Fatalis"
+    ],
+    "tft18_emblem_hunter.tex": [
+      "Hunter"
+    ],
+    "tft18_emblem_inferno.tex": [
+      "Inferno"
+    ],
+    "tft18_emblem_invoker.tex": [
+      "Invoker"
+    ],
+    "tft18_emblem_juggernaut.tex": [
+      "Juggernaut"
+    ],
+    "tft18_emblem_lunar.tex": [
+      "Lunar"
+    ],
+    "tft18_emblem_primal.tex": [
+      "Primal"
+    ],
+    "tft18_emblem_rapidfire.tex": [
+      "Rapidfire"
+    ],
+    "tft18_emblem_ravager.tex": [
+      "Ravager"
+    ],
+    "tft18_emblem_spellweaver.tex": [
+      "Spellweaver"
+    ],
+    "tft18_emblem_sprykin.tex": [
+      "Sprykin"
+    ],
+    "tft18_emblem_vanguard.tex": [
+      "Vanguard"
+    ]
+  }
+}

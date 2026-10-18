@@ -1,0 +1,55 @@
+# Windows installer and auto-update feed for the Electron runtime.
+# Build with `npm run dist`; `npm run release` uploads a draft GitHub release (needs GH_TOKEN).
+appId: gg.archipelago.tft
+productName: TFT Archipelago
+copyright: Copyright © 2026 Novy
+
+directories:
+  # build/ holds the packaged APWorld (scripts/package-apworld.mjs) and is gitignored
+  buildResources: installer
+  output: release
+
+# Renderer code is bundled by Vite into dist/, the main process by esbuild into
+# dist-electron/. Only koffi ships as a node module (see package.json dependencies).
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - '!dist-electron/**/*.map'
+  - package.json
+  - '!node_modules/koffi/{doc,lib,vendor}/**'
+  - '!node_modules/koffi/src/**/*.{cc,hh,h,c,txt,inc}'
+  - '!node_modules/**/*.{md,lib}'
+
+# The UI is English only; Chromium's other locales add ~48 MB
+electronLanguages:
+  - en-US
+
+asarUnpack:
+  # koffi loads its native binary from a path next to its own sources
+  - node_modules/koffi/**
+  - node_modules/@koromix/**
+
+win:
+  target:
+    - target: nsis
+      arch: x64
+  icon: installer/icon.ico
+  # Signing is off until a certificate exists; electron-builder signs once
+  # WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD (or Azure Trusted Signing settings) are provided.
+  signAndEditExecutable: true
+
+nsis:
+  oneClick: true
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: TFT Archipelago
+  artifactName: TFT-Archipelago-Setup-${version}.${ext}
+  # Player data in Documents/TFTArchipelago is kept on uninstall
+  deleteAppDataOnUninstall: false
+
+publish:
+  provider: github
+  owner: Alpaka623
+  repo: tft-archipelago-releases
+  releaseType: draft

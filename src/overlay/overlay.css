@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  background: transparent;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  pointer-events: none;
+}
+
+/* Blitz-style widget cards: dark and readable when idle, opaque with grips on hover */
+.widget-card {
+  position: relative;
+  pointer-events: auto;
+  font-family: 'Inter Variable', Inter, ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  padding: 10px 14px 12px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(14, 14, 17, 0.82);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.widget-card:hover,
+.widget-card[data-active='true'] {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(30, 30, 35, 0.97);
+}
+
+.widget-grip,
+.widget-scale-grip {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 150ms ease, background-color 150ms ease;
+}
+
+.widget-card:hover .widget-grip,
+.widget-card:hover .widget-scale-grip,
+.widget-card[data-active='true'] .widget-grip,
+.widget-card[data-active='true'] .widget-scale-grip {
+  opacity: 1;
+}
+
+.widget-grip {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px 0 0 7px;
+  cursor: grab;
+}
+
+.widget-grip[data-active='true'] {
+  cursor: grabbing;
+}
+
+.widget-grip:hover,
+.widget-grip[data-active='true'] {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.widget-grip-dots {
+  width: 6px;
+  height: 22px;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.6) 1px, transparent 1.4px);
+  background-size: 3px 4px;
+}
+
+.widget-scale-grip {
+  right: 1px;
+  bottom: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 0 0 7px 0;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: nwse-resize;
+}
+
+.widget-scale-grip:hover,
+.widget-scale-grip[data-active='true'] {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.toast-card {
+  font-family: 'Inter Variable', Inter, ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  color: #fff;
+  padding: 7px 12px 8px;
+  /* Only the left edge takes the accent color from the border-l-* utility */
+  border-style: solid;
+  border-width: 1px 1px 1px 3px;
+  border-top-color: rgba(255, 255, 255, 0.1);
+  border-right-color: rgba(255, 255, 255, 0.1);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(14, 14, 17, 0.9);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}

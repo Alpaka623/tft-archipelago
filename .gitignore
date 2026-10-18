@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+public/downloads/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Compiled config artifacts
+vite.config.js
+vite.config.d.ts
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Editor / IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Overwolf packaging
+*.opk
+
+# Electron build output
+dist-electron/
+
+# Electron installer output
+release/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Local installer test runs
+release-test/
