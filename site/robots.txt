@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://alpaka623.github.io/tft-archipelago/sitemap.xml
