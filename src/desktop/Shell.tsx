@@ -18,7 +18,13 @@ import {
 } from '@tabler/icons-react'
 import { version as APP_VERSION } from '../../package.json'
 import { LOCATION_CHECKS } from '../data/locations'
-import { APP_UPDATE_STATUS_MESSAGE_ID, platform, type AppUpdateStatus } from '../platform'
+import {
+  APP_UPDATE_STATUS_MESSAGE_ID,
+  DISCORD_PRESENCE_STATUS_MESSAGE_ID,
+  platform,
+  type AppUpdateStatus,
+  type DiscordPresenceStatus,
+} from '../platform'
 import type { AppState, PinnedCheck } from '../types/state'
 import { describeRiotPhase } from './riot'
 import { MAX_PINNED_CHECKS, connectionLabel, sendPinnedChecks, type PageId } from './shared'
@@ -198,6 +204,51 @@ function AppVersionRow() {
   )
 }
 
+function useDiscordPresenceStatus(): [DiscordPresenceStatus | null, (status: DiscordPresenceStatus | null) => void] {
+  const [status, setStatus] = React.useState<DiscordPresenceStatus | null>(null)
+
+  React.useEffect(() => {
+    if (!platform) return undefined
+    let active = true
+    void platform.getDiscordPresenceStatus().then((initial) => {
+      if (active) setStatus(current => current ?? initial)
+    })
+    const removeListener = platform.onMessage((message) => {
+      if (message.id === DISCORD_PRESENCE_STATUS_MESSAGE_ID) setStatus(message.content as DiscordPresenceStatus)
+    })
+    return () => {
+      active = false
+      removeListener()
+    }
+  }, [])
+
+  return [status, setStatus]
+}
+
+// Electron only: Rich Presence on/off; the main process remembers the choice
+function DiscordPresenceRow() {
+  const [status, setStatus] = useDiscordPresenceStatus()
+  if (!status) return null
+
+  const toggle = () => {
+    void platform?.setDiscordPresenceEnabled(!status.enabled).then(next => setStatus(next))
+  }
+  const tone = !status.enabled ? 'idle' : status.connected ? 'ok' : 'warn'
+  const label = !status.enabled ? 'Off' : status.connected ? 'On' : 'Not running'
+  return (
+    <button
+      className="sidebar-status-row sidebar-status-link"
+      title={status.enabled ? 'Stop showing your progress in your Discord status' : 'Show your progress in your Discord status'}
+      type="button"
+      onClick={toggle}
+    >
+      <span className={`dot ${tone}`} />
+      <span>Discord status</span>
+      <span className="faint">{label}</span>
+    </button>
+  )
+}
+
 function StatusBlock({ state, onSelect }: { state: AppState; onSelect: (page: PageId) => void }) {
   const riot = state.clientMatch ? describeRiotPhase(state.clientMatch) : null
   return (
@@ -228,6 +279,7 @@ function StatusBlock({ state, onSelect }: { state: AppState; onSelect: (page: Pa
           <span className="text-bad">Invalid</span>
         </button>
       )}
+      <DiscordPresenceRow />
       <AppVersionRow />
     </div>
   )

@@ -5,6 +5,7 @@ import type {
   AppUpdateStatus,
   CandidateWindowInfo,
   CaptureGeometry,
+  DiscordPresenceStatus,
   ClientApiResponse,
   EvidencePruneResult,
   FileEncoding,
@@ -13,6 +14,7 @@ import type {
   PlatformMessage,
   PlatformRect,
   PlatformWindowInfo,
+  RichPresence,
   SaveDownloadRequest,
   WindowDragLimits,
   WindowDragMode,
@@ -51,6 +53,9 @@ export type BridgeRequest =
   | { type: 'getUpdateStatus' }
   | { type: 'installUpdate' }
   | { type: 'openExternalUrl'; url: string }
+  | { type: 'setRichPresence'; presence: RichPresence | null }
+  | { type: 'getDiscordPresenceStatus' }
+  | { type: 'setDiscordPresenceEnabled'; enabled: boolean }
 
 export interface BridgeResponses {
   obtainWindow: string | null
@@ -81,6 +86,9 @@ export interface BridgeResponses {
   getUpdateStatus: AppUpdateStatus | null
   installUpdate: boolean
   openExternalUrl: void
+  setRichPresence: void
+  getDiscordPresenceStatus: DiscordPresenceStatus
+  setDiscordPresenceEnabled: DiscordPresenceStatus
 }
 
 export interface ElectronBridge {

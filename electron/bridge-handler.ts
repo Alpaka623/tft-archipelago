@@ -4,6 +4,7 @@ import path from 'node:path'
 import { app, desktopCapturer, dialog, screen, shell, type BrowserWindow } from 'electron'
 import type { BridgeRequest } from '../src/platform/bridge'
 import { isHttpsUrl, type SaveDownloadRequest } from '../src/platform/types'
+import type { DiscordPresence } from './discord-presence'
 import type { GameTracker } from './game-tracker'
 import type { LcuClient } from './lcu-client'
 import type { AppUpdater } from './updater'
@@ -14,6 +15,7 @@ export interface BridgeContext {
   windows: WindowManager
   game: GameTracker
   lcuClient: LcuClient | null
+  discordPresence: DiscordPresence
   getAppUpdater(): AppUpdater | null
 }
 
@@ -157,9 +159,11 @@ export async function handleBridgeRequest(
       managed.win.setMinimumSize(Math.max(1, request.width), Math.max(1, request.height))
       return true
     }
-    case 'setClickThrough':
-      windows.get(request.windowId)?.win.setIgnoreMouseEvents(request.enabled)
+    case 'setClickThrough': {
+      const managed = windows.get(request.windowId)
+      if (managed) windows.setClickThrough(managed, request.enabled)
       return undefined
+    }
     case 'setWindowFocusable': {
       // Windows only routes mouse moves outside a window to it while it is in the
       // foreground, so calibration drags need a focusable blocker window
@@ -237,5 +241,12 @@ export async function handleBridgeRequest(
     case 'openExternalUrl':
       if (isHttpsUrl(request.url)) void shell.openExternal(request.url)
       return
+    case 'setRichPresence':
+      context.discordPresence.setPresence(request.presence)
+      return undefined
+    case 'getDiscordPresenceStatus':
+      return context.discordPresence.getStatus()
+    case 'setDiscordPresenceEnabled':
+      return context.discordPresence.setEnabled(request.enabled)
   }
 }

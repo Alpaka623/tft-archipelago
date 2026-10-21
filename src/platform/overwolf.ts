@@ -274,6 +274,17 @@ export function createOverwolfPlatform(): Platform {
       if (isHttpsUrl(url)) overwolf.utils.openUrlInDefaultBrowser(url)
     },
 
+    // Overwolf apps cannot reach Discord's local IPC pipe
+    setRichPresence() {},
+
+    getDiscordPresenceStatus() {
+      return Promise.resolve(null)
+    },
+
+    setDiscordPresenceEnabled() {
+      return Promise.resolve(null)
+    },
+
     // Overwolf has no save dialog: downloads go to Documents/TFTArchipelago
     saveDownload(download) {
       const destination = toDocumentsPath(`${DOWNLOAD_FOLDER}/${download.fileName}`)

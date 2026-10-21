@@ -1,11 +1,15 @@
 // The TFT session: the game process starting and stopping, and its window resolution
 import type { GameState } from '../platform'
+import { deriveState } from './app-state'
 import { evaluateLiveBoard, setLatestBoardStats, validateImmediateMinorChecks } from './archipelago/checks'
 import { broadcastState } from './broadcast'
 import { handleMatchEnd, resetMatchDetectionState } from './detection/match'
+import { syncRichPresence } from './discord-presence'
 import { getLiveRound } from './live-round'
 import { logGep } from './log'
 import { clientMatchTracker, platform, tftLogTracker } from './runtime'
+import { handleVisionLogRoundEnd } from './sources/vision'
+import { getRoundEndTimes } from './tft-log-tracker'
 import { run, session, windows } from './state'
 import type { TftEndOfGameFile, TftLogBatch } from '../platform/tft-log'
 import { prewarmBlockerWindows, resyncAllBlockerPositions } from './windows/blockers'
@@ -87,7 +91,14 @@ export function trackTftSession(): void {
 // TFT client log (Electron): the round count feeds the live stage
 export function handleTftLogBatch(batch: TftLogBatch): void {
   const { roundChanged } = tftLogTracker.handleEvents(batch.events)
-  if (roundChanged && session.isTftRunning) validateImmediateMinorChecks()
+  // the next round's shop refresh follows; vision may miss the stage label change
+  const roundEndedAt = getRoundEndTimes(batch.events).pop()
+  if (!batch.isReplay && roundEndedAt !== undefined && session.isTftRunning) handleVisionLogRoundEnd(roundEndedAt)
+  if (roundChanged && session.isTftRunning) {
+    validateImmediateMinorChecks()
+    // The stage is shown in Discord but not part of the broadcast state
+    syncRichPresence(deriveState())
+  }
 }
 
 // TFTEoGStats.json changed: after every round (live board) and at the game end (match result)

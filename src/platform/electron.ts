@@ -63,5 +63,11 @@ export function createElectronPlatform(bridge: ElectronBridge): Platform {
     openExternalUrl: (url) => {
       void bridge.invoke({ type: 'openExternalUrl', url })
     },
+
+    setRichPresence: (presence) => {
+      void bridge.invoke({ type: 'setRichPresence', presence })
+    },
+    getDiscordPresenceStatus: () => bridge.invoke({ type: 'getDiscordPresenceStatus' }),
+    setDiscordPresenceEnabled: (enabled) => bridge.invoke({ type: 'setDiscordPresenceEnabled', enabled }),
   }
 }

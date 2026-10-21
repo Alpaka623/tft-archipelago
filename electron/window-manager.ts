@@ -31,6 +31,8 @@ export interface ManagedWindow {
   // In-game windows only: whether the background wants it shown, and where (game-relative px)
   wantsVisible: boolean
   gameRect: PlatformRect
+  // Click-through windows never receive forwarded clicks
+  ignoresMouseEvents: boolean
 }
 
 function getDefaultGameRect(def: WindowDef): PlatformRect {
@@ -124,12 +126,13 @@ export class WindowManager {
       pendingMessages: [],
       wantsVisible: false,
       gameRect: getDefaultGameRect(def),
+      ignoresMouseEvents: false,
     }
     this.windows.set(name, managed)
 
     if (def.kind === 'ingame') {
       win.setAlwaysOnTop(true, 'screen-saver')
-      if (def.clickThrough) win.setIgnoreMouseEvents(true)
+      if (def.clickThrough) this.setClickThrough(managed, true)
     }
 
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -158,6 +161,11 @@ export class WindowManager {
     }
 
     return managed
+  }
+
+  setClickThrough(managed: ManagedWindow, enabled: boolean): void {
+    managed.ignoresMouseEvents = enabled
+    managed.win.setIgnoreMouseEvents(enabled)
   }
 
   // Messages to a window that is still loading are delivered once it has loaded

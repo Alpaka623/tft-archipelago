@@ -7,9 +7,11 @@ import {
   type BridgeRequest,
 } from '../src/platform/bridge'
 import { TFT_END_OF_GAME_MESSAGE_ID, TFT_LOG_EVENTS_MESSAGE_ID } from '../src/platform/tft-log'
-import { APP_UPDATE_STATUS_MESSAGE_ID, BACKGROUND_WINDOW_ID } from '../src/platform/types'
+import { APP_UPDATE_STATUS_MESSAGE_ID, BACKGROUND_WINDOW_ID, DISCORD_PRESENCE_STATUS_MESSAGE_ID } from '../src/platform/types'
 import { handleBridgeRequest } from './bridge-handler'
+import { ClickForwarder } from './click-forwarder'
 import { loadElectronConfig } from './config'
+import { DiscordPresence } from './discord-presence'
 import { GameTracker } from './game-tracker'
 import { LcuClient } from './lcu-client'
 import { TftLogWatcher } from './tft-log-watcher'
@@ -69,10 +71,17 @@ function startApp(): void {
     windows.isQuitting = true
   })
 
+  const discordPresence = new DiscordPresence(
+    path.join(app.getPath('userData'), 'discord-presence.json'),
+    status => windows.send(DESKTOP_WINDOW_ID, { id: DISCORD_PRESENCE_STATUS_MESSAGE_ID, content: status }),
+  )
+  discordPresence.start()
+
   const bridgeContext = {
     windows,
     game,
     lcuClient: new LcuClient(config.riotClientInstallDirs),
+    discordPresence,
     getAppUpdater: () => appUpdater,
   }
   ipcMain.handle(BRIDGE_INVOKE_CHANNEL, (event, request: BridgeRequest) => (
@@ -81,6 +90,7 @@ function startApp(): void {
 
   pollGame(game, windows)
   setInterval(() => pollGame(game, windows), GAME_POLL_INTERVAL_MS)
+  new ClickForwarder(game, windows).start()
 
   // The background controller opens the desktop tracker and everything else
   windows.create(BACKGROUND_WINDOW_ID)

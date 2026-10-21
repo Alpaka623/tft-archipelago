@@ -24,6 +24,9 @@ const SHOP_ROUND_START_WAIT_MS = 800
 const MIN_FULL_CHANGE_SLOTS = 4
 // full changes this soon after a new round are the auto refresh (measured ~0.9 s after the label)
 const ROUND_REFRESH_WINDOW_MS = 3000
+// the TFT log reports a round end before the next round's auto refresh, so the first full change
+// this soon after it is that refresh (covers stage label reads that miss the round start)
+const LOG_ROUND_REFRESH_WINDOW_MS = 10000
 // empty slot = purchase only if gold drops in this window (Set 18 wisp slots look empty too)
 const PURCHASE_GOLD_WINDOW_MS = 1500
 // ...and the slot has to stay empty; cards dim briefly on XP buys, which also cost 4 gold
@@ -56,6 +59,7 @@ let lastDeliveredShopSnapshot: string[] | null = null
 let pendingShopSnapshot: string[] | null = null
 let pendingShopTimeoutId: number | null = null
 let roundStartedAt: number | null = null
+let logRoundEndedAt: number | null = null
 let pendingPurchase: { snapshot: string[]; createdAt: number } | null = null
 let pendingPurchaseTimeoutId: number | null = null
 let lastIgnoredShopKey = ''
@@ -98,6 +102,7 @@ export function resetVisionSourceState(): void {
   latestGameState = null
   resetAugmentTracking()
   roundStartedAt = null
+  logRoundEndedAt = null
   pendingPurchase = null
   goldHistory = []
   goldConsumedUntil = 0
@@ -133,6 +138,11 @@ function deliverShopSnapshot(snapshot: string[], isConfirmedPurchase = false): v
 
   // auto refresh after round start, even if wisps made the engine think it already refreshed
   const isFullChange = countChangedShopSlots(snapshot, shop.baseline) >= MIN_FULL_CHANGE_SLOTS
+  if (isFullChange && logRoundEndedAt !== null && Date.now() - logRoundEndedAt <= LOG_ROUND_REFRESH_WINDOW_MS) {
+    // follow-up frames of this refresh get the normal round start window
+    logRoundEndedAt = null
+    roundStartedAt = Date.now()
+  }
   if (isFullChange && roundStartedAt !== null && Date.now() - roundStartedAt <= ROUND_REFRESH_WINDOW_MS) {
     markAwaitingAutomaticShopRefresh()
   }
@@ -383,6 +393,19 @@ function handleAugments(state: VisionGameState): void {
   }, isFastClose ? AUGMENT_CLOSE_FAST_MS : AUGMENT_CLOSE_GRACE_MS)
 }
 
+// TFT log: combat or carousel ended (log timestamp), the next round starts within seconds
+export function handleVisionLogRoundEnd(endedAt: number): void {
+  if (platform.kind === 'overwolf') return
+  // the stage label already started the next round
+  if (roundStartedAt !== null && roundStartedAt >= endedAt) return
+  if (Date.now() - endedAt > LOG_ROUND_REFRESH_WINDOW_MS) return
+
+  logGep('Vision round start: round end in TFT log', { ageMs: Date.now() - endedAt })
+  handleRoundStart()
+  logRoundEndedAt = endedAt
+  flushPendingShopSnapshot()
+}
+
 export function handleVisionLayoutChanged(): void {
   // new alignment/resolution: fingerprints changed without any game action
   layoutResyncPending = true
@@ -472,8 +495,10 @@ export function handleVisionGameState(state: VisionGameState): void {
     }
     handleShopVisibleUpdate(true)
   } else if (state.shopVisible === false && shop.isVisible) {
-    flushPendingShopSnapshot()
+    // a full change right before hiding is the shop sliding out (carousel, augments), so it
+    // only syncs the baseline
     handleShopVisibleUpdate(false)
+    flushPendingShopSnapshot()
   } else if (state.shopVisible === true) {
     handleShopSnapshot(state.shopSnapshot)
   }

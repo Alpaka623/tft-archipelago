@@ -40,6 +40,17 @@ koffi.alias('HWND', HANDLE)
 koffi.alias('DWORD', 'uint32_t')
 koffi.struct('RECT', { left: 'long', top: 'long', right: 'long', bottom: 'long' })
 koffi.struct('POINT', { x: 'long', y: 'long' })
+const GUITHREADINFO = koffi.struct('GUITHREADINFO', {
+  cbSize: 'DWORD',
+  flags: 'DWORD',
+  hwndActive: 'HWND',
+  hwndFocus: 'HWND',
+  hwndCapture: 'HWND',
+  hwndMenuOwner: 'HWND',
+  hwndMoveSize: 'HWND',
+  hwndCaret: 'HWND',
+  rcCaret: 'RECT',
+})
 
 const FindWindowExW = user32.func('HWND __stdcall FindWindowExW(HWND hWndParent, HWND hWndChildAfter, const char16_t *lpszClass, const char16_t *lpszWindow)')
 const IsWindow = user32.func('bool __stdcall IsWindow(HWND hWnd)')
@@ -54,6 +65,7 @@ const GetForegroundWindow = user32.func('HWND __stdcall GetForegroundWindow()')
 const GetSystemMetrics = user32.func('int __stdcall GetSystemMetrics(int nIndex)')
 const GetCursorPos = user32.func('bool __stdcall GetCursorPos(_Out_ POINT *lpPoint)')
 const GetAsyncKeyState = user32.func('short __stdcall GetAsyncKeyState(int vKey)')
+const GetGUIThreadInfo = user32.func('bool __stdcall GetGUIThreadInfo(DWORD idThread, _Inout_ GUITHREADINFO *pgui)')
 const dwmapi = koffi.load('dwmapi.dll')
 const DwmGetWindowAttribute = dwmapi.func('int __stdcall DwmGetWindowAttribute(HWND hwnd, DWORD dwAttribute, _Out_ RECT *pvAttribute, DWORD cbAttribute)')
 const DWMWA_EXTENDED_FRAME_BOUNDS = 9
@@ -219,6 +231,16 @@ export class GameMonitor {
       foregroundIsOwnProcess: foregroundPid === process.pid,
       foregroundRect: foreground ? getWindowRect(foreground) : null,
     }
+  }
+
+  // TFT keeps the mouse captured while it is in the foreground, so Windows routes every click to
+  // it, even over overlay windows (see click-forwarder.ts)
+  isGameHoldingMouseCapture(): boolean {
+    if (!this.gameWindow) return false
+    const threadId = GetWindowThreadProcessId(this.gameWindow, [0]) as number
+    if (!threadId) return false
+    const info = { cbSize: koffi.sizeof(GUITHREADINFO) } as { cbSize: number; hwndCapture?: Hwnd | null }
+    return Boolean(GetGUIThreadInfo(threadId, info)) && Boolean(info.hwndCapture)
   }
 
   // Raw HWND value, used to match the desktopCapturer source id 'window:<hwnd>:0'

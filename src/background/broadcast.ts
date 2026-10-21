@@ -1,5 +1,6 @@
 import type { WindowMessage } from '../types/state'
 import { deriveState } from './app-state'
+import { syncRichPresence } from './discord-presence'
 import { platform } from './runtime'
 import { windows } from './state'
 import { syncBlockersWithState } from './windows/blockers'
@@ -20,4 +21,5 @@ export function broadcastState(): void {
   sendToConnectedWindows({ id: 'STATE_UPDATE', content: state })
   syncPinnedChecksWindow('state broadcast')
   syncBlockersWithState(state)
+  syncRichPresence(state)
 }

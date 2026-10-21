@@ -105,7 +105,30 @@ export interface Platform {
   installUpdate(): Promise<boolean>
   // https only
   openExternalUrl(url: string): void
+
+  // Discord Rich Presence (Electron only); null clears it
+  setRichPresence(presence: RichPresence | null): void
+  // null on Overwolf; changes arrive as DISCORD_PRESENCE_STATUS_MESSAGE_ID
+  getDiscordPresenceStatus(): Promise<DiscordPresenceStatus | null>
+  setDiscordPresenceEnabled(enabled: boolean): Promise<DiscordPresenceStatus | null>
 }
+
+export interface RichPresence {
+  details: string
+  state: string | null
+  // Epoch ms; Discord shows the elapsed time since then
+  startedAt: number | null
+  // Small status icon; null shows none
+  runStatus: 'valid' | 'invalid' | null
+}
+
+export interface DiscordPresenceStatus {
+  enabled: boolean
+  // Connected to a running Discord client
+  connected: boolean
+}
+
+export const DISCORD_PRESENCE_STATUS_MESSAGE_ID = 'DISCORD_PRESENCE_STATUS'
 
 export type AppUpdateState = 'idle' | 'checking' | 'downloading' | 'ready' | 'error'
 

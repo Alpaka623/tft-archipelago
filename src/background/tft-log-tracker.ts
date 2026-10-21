@@ -13,6 +13,14 @@ export interface TftLogUpdate {
 
 const ROUND_END_PHASES = new Set(['CombatDeparture', 'DraftDeparture'])
 
+// Timestamps (epoch ms) of the round ends in a live batch, oldest first
+export function getRoundEndTimes(events: TftLogEvent[]): number[] {
+  return events
+    .filter(event => event.type === 'phase' && ROUND_END_PHASES.has(event.phase))
+    .map(event => parseTftLogTimestamp(event.at))
+    .filter((at): at is number => at !== null)
+}
+
 // Log timestamps are UTC: "2026.10.18-08.48.26:573"
 export function parseTftLogTimestamp(at: string): number | null {
   const match = /^(\d{4})\.(\d{2})\.(\d{2})-(\d{2})\.(\d{2})\.(\d{2}):(\d{3})$/.exec(at)
