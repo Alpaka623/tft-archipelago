@@ -8,6 +8,8 @@ import type { GameTracker } from './game-tracker'
 import type { ManagedWindow, WindowManager } from './window-manager'
 
 const POLL_INTERVAL_MS = 16
+// how long a press waits for the game to take the capture before it counts as a real window click
+const CAPTURE_WAIT_MS = 150
 
 interface ForwardTarget {
   managed: ManagedWindow
@@ -21,6 +23,7 @@ export class ClickForwarder {
   private hovered: ManagedWindow | null = null
   // window that got the forwarded mouseDown; receives moves and the mouseUp wherever the cursor is
   private pressed: ManagedWindow | null = null
+  private pendingPress: { managed: ManagedWindow; startedAt: number } | null = null
   private lastMoveKey = ''
 
   constructor(private readonly game: GameTracker, private readonly windows: WindowManager) {}
@@ -65,8 +68,33 @@ export class ClickForwarder {
       return
     }
 
-    // Real input reaches the windows while the game does not hold the capture
-    const hit = isCaptured ? this.hitTest(cursor) : null
+    // A press over an overlay window: the game takes the capture once it handles the press, which
+    // can be a frame after the button went down. No capture means the window got the real click.
+    if (isButtonDown && !wasButtonDown) {
+      const hit = this.hitTest(cursor)
+      this.pendingPress = hit ? { managed: hit.managed, startedAt: Date.now() } : null
+    }
+    if (this.pendingPress) {
+      const target = this.toTarget(this.pendingPress.managed, cursor)
+      if (target && isCaptured) {
+        this.pendingPress = null
+        console.log(`Click forwarded to ${target.managed.name}`, { x: target.x, y: target.y })
+        this.send(target, 'mouseDown')
+        this.pressed = target.managed
+        if (!isButtonDown) {
+          this.send(target, 'mouseUp')
+          this.pressed = null
+        }
+        return
+      }
+      if (!target || !isButtonDown || Date.now() - this.pendingPress.startedAt > CAPTURE_WAIT_MS) {
+        console.log(`Click on ${this.pendingPress.managed.name} not forwarded (game did not take the capture)`)
+        this.pendingPress = null
+      }
+    }
+
+    // Hover only matters while the game holds the capture; otherwise the window gets real moves
+    const hit = isCaptured && !isButtonDown ? this.hitTest(cursor) : null
     if (this.hovered && this.hovered !== hit?.managed) {
       const previous = this.toTarget(this.hovered, cursor)
       if (previous) this.send(previous, 'mouseLeave')
@@ -79,12 +107,6 @@ export class ClickForwarder {
       this.send(hit, 'mouseEnter')
     }
     this.sendMove(hit)
-
-    if (isButtonDown && !wasButtonDown) {
-      console.log(`Click forwarded to ${hit.managed.name}`, { x: hit.x, y: hit.y })
-      this.send(hit, 'mouseDown')
-      this.pressed = hit.managed
-    }
   }
 
   private hitTest(cursor: Electron.Point): ForwardTarget | null {
