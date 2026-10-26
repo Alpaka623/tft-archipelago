@@ -108,6 +108,7 @@ export function deriveState(): AppState {
     checkedLocationIds,
     missingLocationIds: client.authenticated ? client.room.missingLocations : [],
     goalChecks: slot.goalChecks,
+    trustMode: slot.trustMode,
     completedMajorCheckCount: countCompletedMajorChecks(checkedLocationIds),
     startingMajorLocationIds: slot.startingMajorLocationIds,
     majorUnlockOrderLocationIds: slot.majorUnlockOrderLocationIds,

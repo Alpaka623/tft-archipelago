@@ -125,6 +125,7 @@ class TFTArchipelagoWorld(World):
             "starting_major_checks": int(self.options.starting_major_checks.value),
             "bonus_item_share": int(self.options.bonus_item_share.value),
             "trap_share": int(self.options.trap_share.value),
+            "trust_mode": bool(self.options.trust_mode.value),
             "starting_major_location_ids": [
                 LOCATION_TABLE[location_name].code
                 for location_name in self.get_starting_major_location_names()

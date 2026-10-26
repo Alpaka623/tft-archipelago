@@ -253,7 +253,7 @@ const FAQ_SECTIONS: FaqSection[] = [
       {
         id: 'override',
         question: 'The app flagged a violation I did not commit. What can I do?',
-        keywords: 'false positive override wrong mistake chat announce hold',
+        keywords: 'false positive override wrong mistake chat announce hold trust mode honor english language',
         answer: (
           <>
             <p>Open <strong>Overview</strong>, click "Override…" in the red panel and hold the confirm button. The run becomes valid again.</p>
@@ -263,6 +263,10 @@ const FAQ_SECTIONS: FaqSection[] = [
               <li>It only works while the match is running. Once the game closes, the result is final.</li>
             </ul>
             <p>Every violation also saves a screenshot and details to <code>Documents/TFTArchipelago/violations</code>. These help to fix wrong detections.</p>
+            <p>
+              Detection works best with the game client set to English. If false positives keep coming, pick <strong>Trust mode</strong> in
+              the setup walkthrough for your next multiworld: nothing is checked and you keep track of your limits yourself.
+            </p>
           </>
         ),
       },

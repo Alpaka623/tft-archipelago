@@ -34,7 +34,7 @@ game: TFT Archipelago
 requires:
   version: 0.6.5 # Version of Archipelago required for this yaml to work as expected.
   game:
-    TFT Archipelago: 0.4.1 # Version of the world required for this yaml to work as expected.
+    TFT Archipelago: 0.5.0 # Version of the world required for this yaml to work as expected.
 
 TFT Archipelago:
   ################
@@ -122,6 +122,14 @@ TFT Archipelago:
     random-low: 0 # random value weighted towards lower values
     random-high: 0 # random value weighted towards higher values
     random-range-0-50: 0 # random value between 0 and 50
+
+  trust_mode:
+    # Honor system: the client does not validate your restrictions. Rule violations are not detected
+    # and never invalidate a match, so checks count whenever you reach Top 4 with the right board.
+    # Blockers on the shop, XP and augment buttons stay as reminders. Use this if detection does not
+    # work reliably on your setup (e.g. a non-English client).
+    'false': 50
+    'true': 0
 
   ###########################
   # Item & Location Options #

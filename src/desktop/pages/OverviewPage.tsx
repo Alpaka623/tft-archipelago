@@ -12,6 +12,7 @@ import {
   IconPlugConnected,
   IconRefresh,
   IconRocket,
+  IconHeartHandshake,
   IconShieldCheck,
   IconShieldX,
   IconTrophy,
@@ -289,15 +290,21 @@ export function OverviewPage({ state, onNavigate }: { state: AppState; onNavigat
         <Metric icon={IconLockOpen} label="Majors unlocked" total={majorTotal} value={state.unlockedMajorLocationIds.length}>
           <ProgressBar value={percent(state.unlockedMajorLocationIds.length, majorTotal)} />
         </Metric>
-        <Metric
-          icon={state.isValidRun ? IconShieldCheck : IconShieldX}
-          label="Current run"
-          value={<span className={state.isValidRun ? 'text-ok' : 'text-bad'}>{state.isValidRun ? 'Valid' : 'Invalid'}</span>}
-        >
-          <div className="tiny faint metric-note">
-            {state.isValidRun ? describeValidRun(state) : state.lastViolationReason ?? 'A rule was broken'}
-          </div>
-        </Metric>
+        {state.trustMode ? (
+          <Metric icon={IconHeartHandshake} label="Current run" value={<span className="text-ok">Trust mode</span>}>
+            <div className="tiny faint metric-note">Restrictions are not checked, you keep track yourself</div>
+          </Metric>
+        ) : (
+          <Metric
+            icon={state.isValidRun ? IconShieldCheck : IconShieldX}
+            label="Current run"
+            value={<span className={state.isValidRun ? 'text-ok' : 'text-bad'}>{state.isValidRun ? 'Valid' : 'Invalid'}</span>}
+          >
+            <div className="tiny faint metric-note">
+              {state.isValidRun ? describeValidRun(state) : state.lastViolationReason ?? 'A rule was broken'}
+            </div>
+          </Metric>
+        )}
       </div>
 
       <div className="overview-columns">

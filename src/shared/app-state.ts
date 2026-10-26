@@ -35,6 +35,7 @@ export const DEFAULT_APP_STATE: AppState = {
   checkedLocationIds: [],
   missingLocationIds: [],
   goalChecks: 10,
+  trustMode: false,
   completedMajorCheckCount: 0,
   startingMajorLocationIds: [],
   majorUnlockOrderLocationIds: [],

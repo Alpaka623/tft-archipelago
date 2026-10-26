@@ -1,7 +1,7 @@
 # Options live in a module named "options" so WebHost can unpickle them (Utils.RestrictedUnpickler)
 from dataclasses import dataclass
 
-from Options import PerGameCommonOptions, Range, StartInventoryPool
+from Options import PerGameCommonOptions, Range, StartInventoryPool, Toggle
 
 from .locations import MAJOR_LOCATION_TABLE
 
@@ -49,12 +49,22 @@ class TrapShare(Range):
     default = 0
 
 
+class TrustMode(Toggle):
+    """Honor system: the client does not validate your restrictions. Rule violations are not detected
+    and never invalidate a match, so checks count whenever you reach Top 4 with the right board.
+    Blockers on the shop, XP and augment buttons stay as reminders. Use this if detection does not
+    work reliably on your setup (e.g. a non-English client)."""
+
+    display_name = "Trust Mode"
+
+
 @dataclass
 class TFTArchipelagoOptions(PerGameCommonOptions):
     goal_checks: GoalChecks
     starting_major_checks: StartingMajorChecks
     bonus_item_share: BonusItemShare
     trap_share: TrapShare
+    trust_mode: TrustMode
     # Not part of PerGameCommonOptions: a world has to opt in. Core moves these items from the
     # pool into the start inventory and fills the gaps with get_filler_item_name().
     start_inventory_from_pool: StartInventoryPool

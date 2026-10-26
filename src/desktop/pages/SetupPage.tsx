@@ -18,6 +18,9 @@ import {
   IconBomb,
   IconCircleDashed,
   IconGift,
+  IconHeartHandshake,
+  IconInfoCircle,
+  IconShieldCheck,
   type Icon,
 } from '@tabler/icons-react'
 import { platform, type SaveDownloadRequest } from '../../platform'
@@ -41,7 +44,7 @@ import type { PageId } from '../shared'
 // Step-by-step walkthrough for a new run, one question per screen. The settings, YAML and
 // downloads come from ../setup.
 const STEP_STORAGE_KEY = 'tft-archipelago-setup-step'
-const STEPS = ['welcome', 'name', 'goal', 'majors', 'unlocks', 'rewards', 'summary', 'host'] as const
+const STEPS = ['welcome', 'name', 'goal', 'majors', 'unlocks', 'rewards', 'rules', 'summary', 'host'] as const
 type StepId = typeof STEPS[number]
 type UnlockMode = 'hardcore' | 'gentle' | 'custom'
 type RewardMode = 'bonus' | 'traps' | 'classic' | 'custom'
@@ -397,6 +400,24 @@ export function SetupPage({ onNavigate }: { onNavigate: (page: PageId) => void }
             </div>
           </>
         )
+      case 'rules':
+        return (
+          <>
+            <h2>Should the app check your restrictions?</h2>
+            <p className="wizard-lead">
+              The app reads your game screen to count rerolls, XP buys and purchases. A violation invalidates the match, so it
+              sends no checks. If detection does not work well for you, play on the honor system instead.
+            </p>
+            <div className="choice-grid two">
+              <ChoiceCard icon={IconShieldCheck} selected={!settings.trustMode} subtitle="Violations invalidate the match" title="Checked" onSelect={() => update({ trustMode: false })} />
+              <ChoiceCard icon={IconHeartHandshake} selected={settings.trustMode} subtitle="Nothing is checked, you keep track yourself" title="Trust mode" onSelect={() => update({ trustMode: true })} />
+            </div>
+            <p className="wizard-hint">
+              <IconInfoCircle size={14} />
+              Detection works best with the game client set to English. Other languages can break shop and purchase detection.
+            </p>
+          </>
+        )
       case 'summary': {
         const rows: { label: string; value: string; target: StepId }[] = [
           { label: 'Player name', value: settings.slotName.trim(), target: 'name' },
@@ -404,6 +425,7 @@ export function SetupPage({ onNavigate }: { onNavigate: (page: PageId) => void }
           { label: 'Open at start', value: `${settings.startingMajorChecks} of ${MAJOR_CHECK_TOTAL} majors`, target: 'majors' },
           { label: 'Starting unlocks', value: describeStartItems(settings.startItems), target: 'unlocks' },
           { label: 'Other checks', value: describeRewards(settings), target: 'rewards' },
+          { label: 'Rule checking', value: settings.trustMode ? 'Trust mode' : 'Checked', target: 'rules' },
         ]
         return (
           <>

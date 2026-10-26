@@ -37,6 +37,7 @@ export interface ConnectionSettings {
 
 interface TftSlotData extends Record<string, unknown> {
   goal_checks?: number
+  trust_mode?: unknown
   starting_major_location_ids?: unknown
   major_unlock_order_location_ids?: unknown
 }
@@ -102,6 +103,7 @@ function applySlotData(slotData: TftSlotData): void {
     slotData.major_unlock_order_location_ids,
     defaultMajorUnlockOrderLocationIds,
   ).filter(id => !slot.startingMajorLocationIds.includes(id))
+  slot.trustMode = slotData.trust_mode === true
   // Pins of majors the new slot data locks are dropped
   slot.pinnedChecks = normalizePinnedChecks(slot.pinnedChecks)
 }
@@ -149,6 +151,7 @@ export async function connect(nextSettings: ConnectionSettings): Promise<void> {
   connection.error = null
   slot.hasReportedGoal = false
   slot.goalChecks = DEFAULT_GOAL_CHECKS
+  slot.trustMode = false
   slot.startingMajorLocationIds = [...defaultStartingMajorLocationIds]
   slot.majorUnlockOrderLocationIds = [...defaultMajorUnlockOrderLocationIds]
   broadcastState()

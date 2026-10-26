@@ -89,6 +89,8 @@ export interface AppState {
   checkedLocationIds: number[]
   missingLocationIds: number[]
   goalChecks: number
+  // Honor system from the slot data: restrictions are not validated
+  trustMode: boolean
   completedMajorCheckCount: number
   startingMajorLocationIds: number[]
   majorUnlockOrderLocationIds: number[]

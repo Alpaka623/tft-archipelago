@@ -39,6 +39,8 @@ export interface SetupSettings {
   bonusItemShare: number
   // Percent of the free locations with traps
   trapShare: number
+  // Honor system: the client does not validate restrictions
+  trustMode: boolean
 }
 
 export const DEFAULT_SETUP: SetupSettings = {
@@ -48,6 +50,7 @@ export const DEFAULT_SETUP: SetupSettings = {
   startItems: {},
   bonusItemShare: 100,
   trapShare: 0,
+  trustMode: false,
 }
 
 function clamp(value: unknown, min: number, max: number, fallback: number): number {
@@ -69,6 +72,7 @@ export function normalizeSetup(raw: Partial<SetupSettings> | null): SetupSetting
     startItems,
     bonusItemShare: clamp(raw?.bonusItemShare, 0, 100, DEFAULT_SETUP.bonusItemShare),
     trapShare: clamp(raw?.trapShare, 0, MAX_TRAP_SHARE, DEFAULT_SETUP.trapShare),
+    trustMode: raw?.trustMode === true,
   }
 }
 
@@ -121,6 +125,7 @@ export function buildPlayerYaml(settings: SetupSettings): string {
     `  starting_major_checks: ${settings.startingMajorChecks}`,
     `  bonus_item_share: ${settings.bonusItemShare}`,
     `  trap_share: ${settings.trapShare}`,
+    `  trust_mode: ${settings.trustMode}`,
     ...(startItemLines ? ['  start_inventory_from_pool:', ...startItemLines] : ['  start_inventory_from_pool: {}']),
     '',
   ].join('\n')

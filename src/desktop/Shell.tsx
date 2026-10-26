@@ -269,7 +269,7 @@ function StatusBlock({ state, onSelect }: { state: AppState; onSelect: (page: Pa
         <div className="sidebar-status-row">
           <span className="dot ok" />
           <span>Run</span>
-          <span className="text-ok">Valid</span>
+          <span className="text-ok">{state.trustMode ? 'Trust mode' : 'Valid'}</span>
         </div>
       ) : (
         // The override lives on Overview

@@ -1,12 +1,12 @@
 // The rule engine: compares the counted actions with the current limits and invalidates the run
 import { deriveState } from '../app-state'
 import { getCurrentStageLabel } from '../live-round'
-import { augments, bonus, economy, run, shop } from '../state'
+import { augments, bonus, economy, run, shop, slot } from '../state'
 import { consumeBonusItem } from './bonus-usage'
 import { saveViolationEvidence } from './violations'
 
 export function invalidateRun(reason: string): void {
-  if (!run.isValid) return
+  if (!run.isValid || slot.trustMode) return
 
   run.isValid = false
   run.violationReason = reason
@@ -16,6 +16,9 @@ export function invalidateRun(reason: string): void {
 }
 
 export function validateCurrentRules(): void {
+  // Trust mode: nothing is validated, so one-time items are not spent automatically either
+  if (slot.trustMode) return
+
   // Over the limit: use a matching one-time item first, if any
   let state = deriveState()
   while (shop.rerollsUsed > state.allowedRerolls && !bonus.activeTraps.rerollLock && state.bonusItems.stock.reroll > 0) {

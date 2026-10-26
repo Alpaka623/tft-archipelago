@@ -44,6 +44,7 @@ class TestDefaultOptions(TFTArchipelagoTestBase):
     def test_slot_data_matches_options(self) -> None:
         slot_data = self.world.fill_slot_data()
         self.assertEqual(slot_data["goal_checks"], self.world.options.goal_checks.value)
+        self.assertIs(slot_data["trust_mode"], False)
         starting_ids = slot_data["starting_major_location_ids"]
         unlock_order_ids = slot_data["major_unlock_order_location_ids"]
         self.assertEqual(len(starting_ids), self.world.options.starting_major_checks.value)

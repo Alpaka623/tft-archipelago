@@ -50,6 +50,8 @@ export const slot = {
   startingMajorLocationIds: [...defaultStartingMajorLocationIds],
   majorUnlockOrderLocationIds: [...defaultMajorUnlockOrderLocationIds],
   pinnedChecks: [] as PinnedCheck[],
+  // Honor system (YAML option): restrictions are not validated and never invalidate the run
+  trustMode: false,
 }
 
 // The running TFT process and the local player
