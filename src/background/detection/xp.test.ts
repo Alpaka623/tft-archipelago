@@ -127,6 +127,45 @@ describe('4-cost champion purchases', () => {
   })
 })
 
+describe('vision XP readings', () => {
+  it('skip the gold-only fallback when the XP counter stays readable and unchanged', () => {
+    detection.noteXpReading(LEVEL_4)
+    detection.handleEconomyUpdate(16, null)
+    vi.advanceTimersByTime(2000)
+
+    expect(state.economy.xpBuysThisRound).toBe(0)
+  })
+
+  it('keep the gold-only fallback when the XP counter turns unreadable', () => {
+    detection.noteXpReading(LEVEL_4)
+    detection.handleEconomyUpdate(16, null)
+    detection.noteXpReading(null)
+    vi.advanceTimersByTime(1000)
+
+    expect(state.economy.xpBuysThisRound).toBe(1)
+  })
+
+  it('still count a readable XP gain that arrives after the gold drop', () => {
+    detection.noteXpReading(LEVEL_4)
+    detection.handleEconomyUpdate(16, null)
+    detection.noteXpReading(LEVEL_4_AFTER_BUY)
+    detection.handleEconomyUpdate(null, LEVEL_4_AFTER_BUY)
+    vi.advanceTimersByTime(2000)
+
+    expect(state.economy.xpBuysThisRound).toBe(1)
+  })
+
+  it('are forgotten on reset', () => {
+    detection.noteXpReading(LEVEL_4)
+    detection.resetXpDetection('match reset')
+    detection.handleEconomyUpdate(20, LEVEL_4)
+    detection.handleEconomyUpdate(16, null)
+    vi.advanceTimersByTime(1000)
+
+    expect(state.economy.xpBuysThisRound).toBe(1)
+  })
+})
+
 describe('resetXpDetection', () => {
   it('drops pending gold-only fallbacks', () => {
     detection.handleEconomyUpdate(16, null)

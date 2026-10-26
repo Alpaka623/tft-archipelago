@@ -29,9 +29,12 @@ let pendingGoldDropForXp: { previousXp: XpSnapshot | null } | null = null
 let pendingXpGainForGold: { previousGold: number | null } | null = null
 let goldOnlyFallbacks: GoldOnlyXpFallbackCandidate[] = []
 let nextFallbackId = 1
-// A 4-cost champion bought right before looks exactly like an XP purchase's gold drop
+// A 4-cost champion bought right before looks exactly like an XP purchase's gold drop, and so do
+// two rerolls or two purchases whose gold reads merged into one 4 gold drop
 let recentShopPurchase: { createdAt: number } | null = null
 let isProbingXp = false
+// Latest XP read by the vision source (null = unreadable); undefined on sources without one
+let latestXpReading: XpSnapshot | null | undefined
 
 function getPhaseLabel(): 'planning' | 'non_planning' {
   return round.isInPlanningPhase ? 'planning' : 'non_planning'
@@ -47,6 +50,20 @@ export function resetXpDetection(reason: string): void {
   clearPendingXpSignals()
   clearGoldOnlyXpFallbacks(reason)
   recentShopPurchase = null
+  latestXpReading = undefined
+}
+
+// Vision only: a readable XP counter decides the fallback, so the gold drop alone is not enough
+export function noteXpReading(xp: XpSnapshot | null): void {
+  latestXpReading = xp
+}
+
+// An XP gain would already have been paired with the gold drop
+function isXpReadableAndUnchanged(previousXp: XpSnapshot | null): boolean {
+  return latestXpReading !== undefined
+    && latestXpReading !== null
+    && previousXp !== null
+    && !hasXpIncreased(latestXpReading, previousXp)
 }
 
 function clearGoldOnlyXpFallbacks(reason: string): void {
@@ -106,7 +123,8 @@ function consumeRecentShopPurchase(goldDelta: number, now: number): boolean {
   return goldDelta === XP_PRICE
 }
 
-export function noteShopPurchaseForXpFallback(): void {
+// Purchases, rerolls and multi-slot purchases: any shop action that also spends gold
+export function noteShopPurchaseForXpFallback(reason = 'nearby shop purchase'): void {
   const now = Date.now()
   recentShopPurchase = { createdAt: now }
 
@@ -114,7 +132,7 @@ export function noteShopPurchaseForXpFallback(): void {
   if (!candidate) return
 
   if (now - candidate.createdAt <= SHOP_PURCHASE_XP_FALLBACK_SUPPRESSION_MS) {
-    cancelOldestGoldOnlyXpFallback('nearby shop purchase')
+    cancelOldestGoldOnlyXpFallback(reason)
   }
 }
 
@@ -145,6 +163,17 @@ function scheduleGoldOnlyXpFallback(
 
     const [candidate] = goldOnlyFallbacks.splice(index, 1)
     pendingGoldDropForXp = null
+    if (isXpReadableAndUnchanged(candidate.previousXp)) {
+      logGep('GEP XP gold-only fallback skipped', {
+        reason: 'XP readable and unchanged',
+        id: candidate.id,
+        previousGold: candidate.previousGold,
+        nextGold: candidate.nextGold,
+        previousXp: candidate.previousXp,
+        latestXp: latestXpReading,
+      })
+      return
+    }
     logGep('GEP XP gold-only fallback confirmed', {
       id: candidate.id,
       previousGold: candidate.previousGold,

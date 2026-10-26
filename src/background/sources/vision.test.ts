@@ -118,3 +118,34 @@ describe('round end from the TFT log', () => {
     expect(state.shop.rerollsUsed).toBe(1)
   })
 })
+
+describe('merged 4 gold drops', () => {
+  function goldFrame(gold: number, shopSnapshot: string[]): VisionGameState {
+    return { ...frame(true, shopSnapshot), gold }
+  }
+
+  beforeEach(() => {
+    vision.handleVisionGameState(goldFrame(10, FIRST_SHOP))
+  })
+
+  it('does not count two quick rerolls as an XP buy', () => {
+    vision.handleVisionGameState(goldFrame(6, SECOND_SHOP))
+    vi.advanceTimersByTime(2000)
+
+    expect(state.economy.xpBuysThisRound).toBe(0)
+  })
+
+  it('does not count two quick purchases as an XP buy', () => {
+    vision.handleVisionGameState(goldFrame(6, ['Sold', 'Sold', 'c1', 'd1', 'e1']))
+    vi.advanceTimersByTime(2000)
+
+    expect(state.economy.xpBuysThisRound).toBe(0)
+  })
+
+  it('still counts a 4 gold drop without a shop change as an XP buy', () => {
+    vision.handleVisionGameState(goldFrame(6, FIRST_SHOP))
+    vi.advanceTimersByTime(2000)
+
+    expect(state.economy.xpBuysThisRound).toBe(1)
+  })
+})

@@ -11,7 +11,7 @@ import {
   isSold,
   markAwaitingAutomaticShopRefresh,
 } from '../detection/shop'
-import { handleEconomyUpdate } from '../detection/xp'
+import { handleEconomyUpdate, noteShopPurchaseForXpFallback, noteXpReading } from '../detection/xp'
 import { logGep } from '../log'
 import { platform } from '../runtime'
 import { augments, economy, session, shop } from '../state'
@@ -206,6 +206,12 @@ function isSinglePurchaseCandidate(snapshot: string[]): boolean {
   return changed.length === 1 && isSold(changed[0].entry)
 }
 
+function countNewlySoldSlots(snapshot: string[]): number {
+  const reference = lastDeliveredShopSnapshot ?? shop.baseline
+  if (!reference) return 0
+  return snapshot.filter((entry, index) => isSold(entry) && !isSold(reference[index] ?? '')).length
+}
+
 function flushPendingShopSnapshot(): void {
   pendingShopTimeoutId = clearTimer(pendingShopTimeoutId)
   const pending = pendingShopSnapshot
@@ -233,6 +239,12 @@ function handleShopSnapshot(snapshot: string[]): void {
   pendingPurchase = null
 
   const changedFromBaseline = shop.baseline === null ? SHOP_SLOT_COUNT : countChangedShopSlots(snapshot, shop.baseline)
+  // two quick rerolls or purchases can merge into one 4 gold drop, which is not an XP buy
+  if (shop.baseline !== null && changedFromBaseline >= MIN_FULL_CHANGE_SLOTS) {
+    noteShopPurchaseForXpFallback('nearby shop reroll')
+  } else if (countNewlySoldSlots(snapshot) >= 2) {
+    noteShopPurchaseForXpFallback('nearby multi-slot purchase')
+  }
   if (changedFromBaseline === 0) {
     lastDeliveredShopSnapshot = [...snapshot]
     return
@@ -265,6 +277,7 @@ function handleEconomy(state: VisionGameState): void {
     lastXpMax = state.xp.max
     xp = { level, current_xp: state.xp.current, xp_max: state.xp.max }
   }
+  noteXpReading(xp)
 
   const goldChanged = state.gold !== null && state.gold !== economy.gold
   const xpChanged = xp !== null && (economy.xp === null || xp.level !== economy.xp.level || xp.current_xp !== economy.xp.current_xp)
