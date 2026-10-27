@@ -45,7 +45,9 @@ There are 171 checks, generated from the current TFT set:
   "Have 5 Traits active", "Reach 80 gold", "Reach level 8" and "Reach Stage 5". They are
   completed during the match and need no Top 4.
 
-3-Star checks for 4- and 5-cost champions never hold an item you need to progress.
+3-Star checks for 4- and 5-cost champions never hold an item you need to progress. Turn off
+`three_star_progression` and the same goes for all 3-Star checks, which is fairer to the other games in a
+multiworld.
 
 Normal, Ranked and Tocker's Trials matches count. Other modes, such as Double Up, complete no checks.
 

@@ -66,6 +66,10 @@ class TFTLocationData:
     # Rarely achievable (3-star 4-/5-costs): only filler and traps, never progression
     filler_only: bool = False
 
+    @property
+    def is_three_star(self) -> bool:
+        return isinstance(self.condition, ChampionCondition) and self.condition.minimum_star_level == 3
+
 
 def build_condition(raw: Dict[str, Any]) -> LocationCondition:
     condition_type = raw["type"]

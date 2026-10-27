@@ -53,6 +53,23 @@ class TestDefaultOptions(TFTArchipelagoTestBase):
         self.assertFalse(set(starting_ids) & set(unlock_order_ids))
 
 
+class TestThreeStarProgressionOff(TFTArchipelagoTestBase):
+    options = {"three_star_progression": False}
+
+    def test_three_star_checks_are_excluded(self) -> None:
+        for location_name, location_data in LOCATION_TABLE.items():
+            location = self.multiworld.get_location(location_name, self.player)
+            expected = location_data.filler_only or location_data.is_three_star
+            self.assertEqual(location.progress_type == location.progress_type.EXCLUDED, expected, location_name)
+
+    def test_three_star_checks_never_hold_progression(self) -> None:
+        distribute_items_restrictive(self.multiworld)
+        for location_name, location_data in LOCATION_TABLE.items():
+            if location_data.is_three_star:
+                item = self.multiworld.get_location(location_name, self.player).item
+                self.assertFalse(item.advancement, f"{location_name} holds {item.name}")
+
+
 class TestGoalNeedsUnlocks(TFTArchipelagoTestBase):
     options = {"goal_checks": 20, "starting_major_checks": 11}
 

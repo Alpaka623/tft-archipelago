@@ -1,7 +1,7 @@
 # Options live in a module named "options" so WebHost can unpickle them (Utils.RestrictedUnpickler)
 from dataclasses import dataclass
 
-from Options import PerGameCommonOptions, Range, StartInventoryPool, Toggle
+from Options import DefaultOnToggle, PerGameCommonOptions, Range, StartInventoryPool, Toggle
 
 from .locations import MAJOR_LOCATION_TABLE
 
@@ -58,6 +58,14 @@ class TrustMode(Toggle):
     display_name = "Trust Mode"
 
 
+class ThreeStarProgression(DefaultOnToggle):
+    """Lets 3-Star checks for 1- to 3-cost champions hold progression items, your own or other games'.
+    Turn it off when playing with other games: a specific 3-Star is luck, so these checks then only hold
+    one-time items, traps or Nothing. 3-Star checks for 4- and 5-cost champions never hold progression."""
+
+    display_name = "3-Star Progression"
+
+
 @dataclass
 class TFTArchipelagoOptions(PerGameCommonOptions):
     goal_checks: GoalChecks
@@ -65,6 +73,7 @@ class TFTArchipelagoOptions(PerGameCommonOptions):
     bonus_item_share: BonusItemShare
     trap_share: TrapShare
     trust_mode: TrustMode
+    three_star_progression: ThreeStarProgression
     # Not part of PerGameCommonOptions: a world has to opt in. Core moves these items from the
     # pool into the start inventory and fills the gaps with get_filler_item_name().
     start_inventory_from_pool: StartInventoryPool

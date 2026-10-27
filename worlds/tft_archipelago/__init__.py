@@ -6,7 +6,14 @@ from worlds.AutoWorld import WebWorld, World
 
 from .items import BONUS_ITEM_WEIGHTS, ITEM_NAME_TO_ID, ITEM_TABLE, TRAP_ITEM_WEIGHTS, build_full_item_pool
 from .locations import LOCATION_NAME_TO_ID, LOCATION_TABLE, MAJOR_LOCATION_TABLE
-from .options import BonusItemShare, GoalChecks, StartingMajorChecks, TFTArchipelagoOptions, TrapShare
+from .options import (
+    BonusItemShare,
+    GoalChecks,
+    StartingMajorChecks,
+    TFTArchipelagoOptions,
+    ThreeStarProgression,
+    TrapShare,
+)
 from .rules import set_rules
 
 
@@ -25,7 +32,7 @@ class TFTArchipelagoWebWorld(WebWorld):
     ]
     option_groups = [
         OptionGroup("Goal", [GoalChecks, StartingMajorChecks]),
-        OptionGroup("Item Pool", [BonusItemShare, TrapShare]),
+        OptionGroup("Item Pool", [BonusItemShare, TrapShare, ThreeStarProgression]),
     ]
 
 
@@ -103,8 +110,10 @@ class TFTArchipelagoWorld(World):
             for location_name, location_data in LOCATION_TABLE.items()
         ]
         # Rarely achievable checks hold optional rewards only, never something the run depends on
+        three_star_progression = bool(self.options.three_star_progression.value)
         for location in checks_region.locations:
-            if LOCATION_TABLE[location.name].filler_only:
+            location_data = LOCATION_TABLE[location.name]
+            if location_data.filler_only or (location_data.is_three_star and not three_star_progression):
                 location.progress_type = LocationProgressType.EXCLUDED
 
         menu_region.connect(checks_region)
@@ -126,6 +135,7 @@ class TFTArchipelagoWorld(World):
             "bonus_item_share": int(self.options.bonus_item_share.value),
             "trap_share": int(self.options.trap_share.value),
             "trust_mode": bool(self.options.trust_mode.value),
+            "three_star_progression": bool(self.options.three_star_progression.value),
             "starting_major_location_ids": [
                 LOCATION_TABLE[location_name].code
                 for location_name in self.get_starting_major_location_names()
