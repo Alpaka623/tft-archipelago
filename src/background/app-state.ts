@@ -110,6 +110,7 @@ export function deriveState(): AppState {
     goalChecks: slot.goalChecks,
     trustMode: slot.trustMode,
     completedMajorCheckCount: countCompletedMajorChecks(),
+    completedMajorLocationIds: [...slot.completedMajorLocationIds],
     startingMajorLocationIds: slot.startingMajorLocationIds,
     majorUnlockOrderLocationIds: slot.majorUnlockOrderLocationIds,
     unlockedMajorLocationIds,

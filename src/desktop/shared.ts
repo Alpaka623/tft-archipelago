@@ -1,4 +1,4 @@
-import { LOCATION_CHECKS, type LocationCheck } from '../data/locations'
+import { LOCATION_CHECKS, MAJOR_LOCATION_CHECKS, type LocationCheck } from '../data/locations'
 import traitsData from '../data/traits.json'
 import tftIcons from '../data/tft-icons.json'
 import { BACKGROUND_WINDOW_ID, platform } from '../platform'
@@ -52,8 +52,19 @@ export function toPinnedCheck(check: LocationCheck): PinnedCheck {
   return { id: check.id, name: check.name, category: check.category }
 }
 
+const majorIds = new Set(MAJOR_LOCATION_CHECKS.map(check => check.id))
+
+// A major counts as done only once the player completed it; one marked by another player's collect
+// stays open, since completing it still counts toward the goal
+export function getDoneCheckIds(state: AppState): Set<number> {
+  return new Set([
+    ...state.checkedLocationIds.filter(id => !majorIds.has(id)),
+    ...state.completedMajorLocationIds,
+  ])
+}
+
 export function togglePinnedCheck(state: AppState, check: LocationCheck): void {
-  if (state.lockedMajorLocationIds.includes(check.id) || state.checkedLocationIds.includes(check.id)) return
+  if (state.lockedMajorLocationIds.includes(check.id) || getDoneCheckIds(state).has(check.id)) return
 
   const isPinned = state.pinnedChecks.some(pinnedCheck => pinnedCheck.id === check.id)
   if (!isPinned && state.pinnedChecks.length >= MAX_PINNED_CHECKS) return

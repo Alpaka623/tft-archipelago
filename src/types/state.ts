@@ -92,6 +92,8 @@ export interface AppState {
   // Honor system from the slot data: restrictions are not validated
   trustMode: boolean
   completedMajorCheckCount: number
+  // Majors this client completed itself; checkedLocationIds also holds majors marked by another player's collect
+  completedMajorLocationIds: number[]
   startingMajorLocationIds: number[]
   majorUnlockOrderLocationIds: number[]
   unlockedMajorLocationIds: number[]

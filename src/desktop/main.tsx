@@ -24,6 +24,7 @@ import { UnlocksPage } from './pages/UnlocksPage'
 import {
   DEVELOPER_MODE_CLICKS,
   DEVELOPER_MODE_CLICK_GAP_MS,
+  getDoneCheckIds,
   readDeveloperMode,
   sendPinnedChecks,
   writeDeveloperMode,
@@ -119,14 +120,14 @@ function Desktop() {
   }, [lastOutcome, addActivity])
 
   React.useEffect(() => {
-    const checkedIds = new Set(state.checkedLocationIds)
+    const doneIds = getDoneCheckIds(state)
     const lockedMajorIds = new Set(state.lockedMajorLocationIds)
     const stillOpenPinnedChecks = state.pinnedChecks
-      .filter(check => !checkedIds.has(check.id) && !lockedMajorIds.has(check.id))
+      .filter(check => !doneIds.has(check.id) && !lockedMajorIds.has(check.id))
     if (stillOpenPinnedChecks.length !== state.pinnedChecks.length) {
       sendPinnedChecks(stillOpenPinnedChecks)
     }
-  }, [state.checkedLocationIds, state.lockedMajorLocationIds, state.pinnedChecks])
+  }, [state])
 
   return (
     <div className="desktop-shell">

@@ -9,6 +9,7 @@ import {
   getChampionCost,
   getChampionIcon,
   getChampionName,
+  getDoneCheckIds,
   getMajorLabel,
   getTraitIcon,
   togglePinnedCheck,
@@ -47,13 +48,17 @@ function buildChampionRows(): ChampionRow[] {
 
 const CHAMPION_ROWS = buildChampionRows()
 
+const majorIdSet = new Set(MAJOR_LOCATION_CHECKS.map(check => check.id))
+
 function matchesStatus(done: boolean, filter: StatusFilter): boolean {
   return filter === 'all' || (filter === 'done') === done
 }
 
 interface CheckContext {
   state: AppState
-  checkedIds: Set<number>
+  doneIds: Set<number>
+  // checked on the server by another player's collect, not completed by the player
+  collectedMajorIds: Set<number>
   pinnedIds: Set<number>
   pinLimitReached: boolean
 }
@@ -76,7 +81,7 @@ function PinButton({ check, context }: { check: LocationCheck; context: CheckCon
 
 function StarButton({ check, star, context }: { check: LocationCheck | undefined; star: 2 | 3; context: CheckContext }) {
   if (!check) return <span className="star-button empty">-</span>
-  const done = context.checkedIds.has(check.id)
+  const done = context.doneIds.has(check.id)
   const pinned = context.pinnedIds.has(check.id)
   return (
     <button
@@ -93,7 +98,8 @@ function StarButton({ check, star, context }: { check: LocationCheck | undefined
 }
 
 function MajorTile({ check, context }: { check: LocationCheck; context: CheckContext }) {
-  const done = context.checkedIds.has(check.id)
+  const done = context.doneIds.has(check.id)
+  const collected = context.collectedMajorIds.has(check.id)
   const pinned = context.pinnedIds.has(check.id)
   const condition = check.condition
   const isTrait = condition.type === 'trait'
@@ -107,7 +113,10 @@ function MajorTile({ check, context }: { check: LocationCheck; context: CheckCon
       </div>
       <div className="major-text">
         <strong>{getMajorLabel(check)}</strong>
-        <small>{isTrait ? 'Top 4, trait active' : 'Top 4, on board'}</small>
+        <small>
+          {isTrait ? 'Top 4, trait active' : 'Top 4, on board'}
+          {collected && ' · collected, still counts'}
+        </small>
       </div>
       {done ? <span className="done-mark"><IconCheck size={14} /></span> : <PinButton check={check} context={context} />}
     </div>
@@ -141,17 +150,21 @@ export function ChecksPage({ state }: { state: AppState }) {
   const [costFilter, setCostFilter] = React.useState<number | null>(null)
   const [search, setSearch] = React.useState('')
 
-  const checkedIds = React.useMemo(() => new Set(state.checkedLocationIds), [state.checkedLocationIds])
+  const doneIds = React.useMemo(() => getDoneCheckIds(state), [state])
+  const collectedMajorIds = React.useMemo(
+    () => new Set(state.checkedLocationIds.filter(id => majorIdSet.has(id) && !doneIds.has(id))),
+    [state.checkedLocationIds, doneIds],
+  )
   const pinnedIds = React.useMemo(() => new Set(state.pinnedChecks.map(check => check.id)), [state.pinnedChecks])
   const lockedMajorIds = React.useMemo(() => new Set(state.lockedMajorLocationIds), [state.lockedMajorLocationIds])
-  const context: CheckContext = { state, checkedIds, pinnedIds, pinLimitReached: state.pinnedChecks.length >= MAX_PINNED_CHECKS }
+  const context: CheckContext = { state, doneIds, collectedMajorIds, pinnedIds, pinLimitReached: state.pinnedChecks.length >= MAX_PINNED_CHECKS }
   const query = search.trim().toLowerCase()
 
   const unlockedMajors = MAJOR_LOCATION_CHECKS.filter(check => !lockedMajorIds.has(check.id))
-  const doneCount = (checks: LocationCheck[]) => checks.filter(check => checkedIds.has(check.id)).length
+  const doneCount = (checks: LocationCheck[]) => checks.filter(check => doneIds.has(check.id)).length
 
   const visibleMajors = unlockedMajors
-    .filter(check => matchesStatus(checkedIds.has(check.id), statusFilter))
+    .filter(check => matchesStatus(doneIds.has(check.id), statusFilter))
     .filter(check => query === '' || `${check.name} ${getMajorLabel(check)}`.toLowerCase().includes(query))
 
   const visibleChampions = CHAMPION_ROWS
@@ -159,12 +172,12 @@ export function ChecksPage({ state }: { state: AppState }) {
     .filter(row => query === '' || row.name.toLowerCase().includes(query))
     .filter((row) => {
       const checks = Object.values(row.checks).filter((check): check is LocationCheck => Boolean(check))
-      const allDone = checks.every(check => checkedIds.has(check.id))
-      return statusFilter === 'all' || (statusFilter === 'done' ? checks.some(check => checkedIds.has(check.id)) : !allDone)
+      const allDone = checks.every(check => doneIds.has(check.id))
+      return statusFilter === 'all' || (statusFilter === 'done' ? checks.some(check => doneIds.has(check.id)) : !allDone)
     })
 
   const visibleOther = OTHER_MINOR_CHECKS
-    .filter(check => matchesStatus(checkedIds.has(check.id), statusFilter))
+    .filter(check => matchesStatus(doneIds.has(check.id), statusFilter))
     .filter(check => query === '' || check.name.toLowerCase().includes(query))
 
   const views: { id: ChecksView; label: string; done: number; total: number }[] = [
@@ -256,7 +269,7 @@ export function ChecksPage({ state }: { state: AppState }) {
           : (
             <div className="panel list-panel">
               {visibleOther.map((check) => {
-                const done = checkedIds.has(check.id)
+                const done = doneIds.has(check.id)
                 return (
                   <div key={check.id} className={`list-row ${done ? 'done' : ''}`}>
                     <span className={`status-icon ${done ? 'done' : ''}`}>{done && <IconCheck size={12} />}</span>
