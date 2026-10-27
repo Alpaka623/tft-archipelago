@@ -38,8 +38,8 @@ function getCurrentlyUnlockedMajorLocationIds(): number[] {
   )
 }
 
-export function countCompletedMajorChecks(checkedLocationIds: number[]): number {
-  return checkedLocationIds.filter(id => majorLocationIds.has(id)).length
+export function countCompletedMajorChecks(): number {
+  return slot.completedMajorLocationIds.size
 }
 
 export function isMajorLocationUnlocked(id: number): boolean {
@@ -109,7 +109,7 @@ export function deriveState(): AppState {
     missingLocationIds: client.authenticated ? client.room.missingLocations : [],
     goalChecks: slot.goalChecks,
     trustMode: slot.trustMode,
-    completedMajorCheckCount: countCompletedMajorChecks(checkedLocationIds),
+    completedMajorCheckCount: countCompletedMajorChecks(),
     startingMajorLocationIds: slot.startingMajorLocationIds,
     majorUnlockOrderLocationIds: slot.majorUnlockOrderLocationIds,
     unlockedMajorLocationIds,

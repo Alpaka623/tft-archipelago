@@ -52,6 +52,9 @@ export const slot = {
   pinnedChecks: [] as PinnedCheck[],
   // Honor system (YAML option): restrictions are not validated and never invalidate the run
   trustMode: false,
+  // Majors this client completed itself, kept in the Archipelago data storage. The server's checked
+  // locations also hold majors marked by another player's collect, which never count toward the goal.
+  completedMajorLocationIds: new Set<number>(),
 }
 
 // The running TFT process and the local player

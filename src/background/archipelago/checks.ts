@@ -5,6 +5,7 @@ import {
   type LocationCategory,
 } from '../../data/locations'
 import { countCompletedMajorChecks, isMajorLocationUnlocked } from '../app-state'
+import { usageStorageKey } from '../bonus-items'
 import {
   isLocationCheckSatisfied,
   isLocationCheckSatisfiedByClientResult,
@@ -185,10 +186,46 @@ export function deliverClientMatchResult(pending: PendingClientMatch, result: Cl
   return sendableLocationIds
 }
 
+const COMPLETED_MAJORS_STORAGE_NAME = 'completed_majors'
+
+function completedMajorsStorageKey(): string {
+  const self = client.players.self
+  return usageStorageKey(self.team, self.slot, COMPLETED_MAJORS_STORAGE_NAME)
+}
+
+// Also counts majors the server already marked through a collect: the player still completed them
+function recordCompletedMajors(ids: number[]): void {
+  const newIds = ids.filter(id => majorLocationIds.has(id) && !slot.completedMajorLocationIds.has(id))
+  if (newIds.length === 0) return
+  for (const id of newIds) slot.completedMajorLocationIds.add(id)
+  logGep('Completed majors recorded', { newIds, completedMajorCheckCount: countCompletedMajorChecks() })
+  try {
+    void client.storage.prepare(completedMajorsStorageKey(), [] as number[]).add(newIds).commit()
+  } catch (error) {
+    console.warn('Failed to store completed majors:', error)
+  }
+}
+
+// After login. Slots from before this list existed start from the server's checked majors once.
+export async function loadCompletedMajors(): Promise<void> {
+  const key = completedMajorsStorageKey()
+  const stored = (await client.storage.fetch<Record<string, number[] | null>>([key]))[key]
+  if (Array.isArray(stored)) {
+    slot.completedMajorLocationIds = new Set(stored.filter(id => majorLocationIds.has(id)))
+    logGep('Completed majors loaded', { completedMajorCheckCount: countCompletedMajorChecks() })
+    return
+  }
+  // Always written, even empty: a missing key on a later login would take collected majors as completed
+  const seedIds = [...new Set(client.room.checkedLocations.filter(id => majorLocationIds.has(id)))]
+  slot.completedMajorLocationIds = new Set(seedIds)
+  logGep('Completed majors started from checked locations', { seedIds })
+  await client.storage.prepare(key, [] as number[]).add(seedIds).commit(true)
+}
+
 export function maybeReportGoal(): void {
   if (!client.authenticated || slot.hasReportedGoal) return
 
-  const completedMajorCheckCount = countCompletedMajorChecks(client.room.checkedLocations)
+  const completedMajorCheckCount = countCompletedMajorChecks()
   if (completedMajorCheckCount < slot.goalChecks) return
 
   slot.hasReportedGoal = true
@@ -216,9 +253,11 @@ export function sendChecks(ids: number[]): void {
   if (sendableIds.length === 0) return
 
   if (client.authenticated) {
+    recordCompletedMajors(sendableIds)
     const missingIds = sendableIds.filter(id => client.room.missingLocations.includes(id))
     if (missingIds.length === 0) {
       logGep('AP check send skipped: no missing locations', { ids: sendableIds })
+      maybeReportGoal()
       return
     }
 
@@ -239,6 +278,7 @@ export function flushPendingChecks(): void {
   if (pendingChecks.length === 0 || !client.authenticated) return
 
   const queuedIds = [...new Set(pendingChecks)]
+  recordCompletedMajors(queuedIds)
   const missingIds = queuedIds.filter(id => client.room.missingLocations.includes(id))
   pendingChecks = []
 

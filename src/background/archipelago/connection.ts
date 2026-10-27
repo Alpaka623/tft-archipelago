@@ -16,7 +16,7 @@ import {
   majorLocationIds,
   slot,
 } from '../state'
-import { flushPendingChecks, maybeReportGoal } from './checks'
+import { flushPendingChecks, loadCompletedMajors, maybeReportGoal } from './checks'
 import {
   consumeItemNotificationSuppression,
   notifyGlobalItemSent,
@@ -118,6 +118,7 @@ async function login(): Promise<void> {
   ) as TftSlotData
   applySlotData(slotData)
   void loadBonusUsage().catch(error => console.warn('Failed to load bonus item usage:', error))
+  await loadCompletedMajors().catch(error => console.warn('Failed to load completed majors:', error))
   connection.error = null
   hasConnectedSuccessfully = true
   flushPendingChecks()
@@ -150,6 +151,7 @@ export async function connect(nextSettings: ConnectionSettings): Promise<void> {
   connection.isConnecting = true
   connection.error = null
   slot.hasReportedGoal = false
+  slot.completedMajorLocationIds = new Set()
   slot.goalChecks = DEFAULT_GOAL_CHECKS
   slot.trustMode = false
   slot.startingMajorLocationIds = [...defaultStartingMajorLocationIds]
