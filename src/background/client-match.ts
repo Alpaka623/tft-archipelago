@@ -55,7 +55,6 @@ export interface ClientMatchResult {
   placement: number
   level: number | null
   lastRound: number | null
-  playersEliminated: number | null
   // from TFTEoGStats.json (lives in Tocker's Trials), null from match history
   health: number | null
   units: ClientBoardUnit[]
@@ -73,7 +72,7 @@ export interface PendingClientMatch {
   violationReason: string | null
   placement: number | null
   result: ClientMatchResult | null
-  // TFTEoGStats.json board, arrives first. History later only adds level, rounds, eliminations.
+  // TFTEoGStats.json board, arrives first. History later only adds level and rounds.
   endOfGame?: ClientMatchResult | null
   endOfGameDelivered?: boolean
   // TFT.log round count at session end
@@ -189,7 +188,6 @@ export function findMatchHistoryResult(
       placement,
       level: readNumberFromRaw(me['level']),
       lastRound: readNumberFromRaw(me['last_round']),
-      playersEliminated: readNumberFromRaw(me['players_eliminated']),
       health: null,
       units: readUnits(me['units']),
       traits: readTraits(me['traits']),
@@ -219,7 +217,7 @@ export function readEndOfGamePlacement(stats: unknown, puuid: string | null): { 
 // TFTEoGStats.json, rewritten after every round and at game end:
 // { gameId, queueId, statsBlock: { gameLengthSeconds, players: [{ PUUID, ffaStanding, health,
 //   boardPieces: [{ championName, itemNames, starLevel, price }] }] } }
-// boardPieces = board only, no bench. No level/rounds/eliminations in there.
+// boardPieces = board only, no bench. No level/rounds in there.
 export interface EndOfGameBoard {
   gameId: number
   queueId: number | null
@@ -263,7 +261,7 @@ export function readEndOfGameBoard(stats: unknown, puuid: string | null): EndOfG
 export function readEndOfGameResult(stats: unknown, puuid: string | null): ClientMatchResult | null {
   const board = readEndOfGameBoard(stats, puuid)
   if (!board || board.placement === null) return null
-  return { ...board, placement: board.placement, level: null, lastRound: null, playersEliminated: null }
+  return { ...board, placement: board.placement, level: null, lastRound: null }
 }
 
 export function isTockersTrialsMatch(pending: PendingClientMatch, result: ClientMatchResult): boolean {
@@ -566,7 +564,7 @@ export class ClientMatchTracker {
     const fulfilledLocationIds = this.deps.deliverResult(entry, result)
     this.removePending(entry)
     if (entry.endOfGameDelivered) {
-      // follow-up to the EoG file: only level, rounds, eliminations are new
+      // follow-up to the EoG file: only level and rounds are new
       this.deps.log('Client match: history follow-up delivered', { gameId: entry.gameId, fulfilledLocationIds })
       return
     }

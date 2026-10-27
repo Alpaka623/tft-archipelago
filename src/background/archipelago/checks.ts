@@ -144,7 +144,6 @@ export function evaluateLiveBoard(source: string): void {
     placement: board.placement ?? 8,
     level: null,
     lastRound: null,
-    playersEliminated: null,
   }
   const fulfilledLocationIds = MINOR_LOCATION_CHECKS
     .filter(location => isLocationCheckSatisfiedByClientResult(location, result))
@@ -163,7 +162,7 @@ export function evaluateLiveBoard(source: string): void {
 }
 
 // Riot client match results (Electron). Majors need Top 4, or in Tocker's Trials a victory (Riot
-// always reports placement 1 there); minors (final board, level, eliminations, stage) count for
+// always reports placement 1 there); minors (final board, level, stage) count for
 // every placement. Only valid runs get here (the tracker drops invalidated sessions).
 export function deliverClientMatchResult(pending: PendingClientMatch, result: ClientMatchResult): number[] {
   const tockersVictory = isTockersTrialsMatch(pending, result) ? getTockersTrialsVictory(pending, result) : null

@@ -22,7 +22,6 @@ function result(overrides: Partial<ClientMatchResult> = {}): ClientMatchResult {
     placement: 3,
     level: 8,
     lastRound: 30,
-    playersEliminated: 2,
     health: null,
     units: [],
     traits: [],
@@ -81,7 +80,6 @@ describe('findMatchHistoryResult', () => {
     placement: 2,
     level: 9,
     last_round: 33,
-    players_eliminated: 3,
     units: [{ character_id: championId, tier: 2, rarity: 4, itemNames: ['TFT_Item_Bloodthirster', ''] }],
     traits: [{ name: 'DA_18_Slayer', num_units: 4, tier_current: 2, tier_total: 3 }],
   }
@@ -94,7 +92,7 @@ describe('findMatchHistoryResult', () => {
 
   it('finds the pending game by id', () => {
     const found = findMatchHistoryResult(history, PUUID, { gameId: 8, sessionStartedAt: 0 })
-    expect(found).toMatchObject({ gameId: 8, placement: 2, level: 9, lastRound: 33, playersEliminated: 3 })
+    expect(found).toMatchObject({ gameId: 8, placement: 2, level: 9, lastRound: 33 })
     expect(found?.units).toEqual([{ championId, starLevel: 2, rarity: 4, itemIds: ['TFT_Item_Bloodthirster'] }])
     expect(found?.traits).toEqual([{ name: 'DA_18_Slayer', numUnits: 4, tierCurrent: 2, tierTotal: 3 }])
   })
@@ -205,11 +203,10 @@ describe('isLocationCheckSatisfiedByClientResult', () => {
     expect(isLocationCheckSatisfiedByClientResult(check({ ...condition, minimumActiveTraits: 1 }), result({ traits }))).toBe(true)
   })
 
-  it('needs history data for level, eliminations and stage', () => {
-    const empty = result({ level: null, playersEliminated: null, lastRound: null })
+  it('needs history data for level and stage', () => {
+    const empty = result({ level: null, lastRound: null })
     expect(isLocationCheckSatisfiedByClientResult(check({ type: 'level', minimumLevel: 8 }), result())).toBe(true)
     expect(isLocationCheckSatisfiedByClientResult(check({ type: 'level', minimumLevel: 8 }), empty)).toBe(false)
-    expect(isLocationCheckSatisfiedByClientResult(check({ type: 'playersEliminated', minimumPlayers: 2 }), empty)).toBe(false)
     expect(isLocationCheckSatisfiedByClientResult(check({ type: 'stage', minimumStage: 5 }), result({ lastRound: 33 }))).toBe(true)
     expect(isLocationCheckSatisfiedByClientResult(check({ type: 'stage', minimumStage: 5 }), empty)).toBe(false)
   })

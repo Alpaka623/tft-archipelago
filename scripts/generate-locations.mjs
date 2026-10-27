@@ -25,7 +25,6 @@ const EXTRA_MINOR_CHECKS = [
   { name: 'Reach 100 gold', condition: { type: 'gold', minimumGold: 100 } },
   { name: 'Reach level 8', condition: { type: 'level', minimumLevel: 8 } },
   { name: 'Reach level 9', condition: { type: 'level', minimumLevel: 9 } },
-  { name: 'Eliminate a player', condition: { type: 'playersEliminated', minimumPlayers: 1 } },
   { name: 'Reach Stage 5', condition: { type: 'stage', minimumStage: 5 } },
 ]
 

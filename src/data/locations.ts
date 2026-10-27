@@ -9,7 +9,6 @@ export type LocationCondition =
   | { type: 'playerCombatWins'; minimumWins: number; consecutive: boolean }
   // Match-end values from the Riot client's match history (Electron)
   | { type: 'level'; minimumLevel: number }
-  | { type: 'playersEliminated'; minimumPlayers: number }
   | { type: 'stage'; minimumStage: number }
 
 export type LocationCategory = 'major' | 'minor'

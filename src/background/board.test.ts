@@ -71,10 +71,6 @@ describe('isLocationCheckSatisfied', () => {
     expect(isLocationCheckSatisfied(check({ type: 'playerCombatWins', minimumWins: 5, consecutive: false }), live)).toBe(true)
     expect(isLocationCheckSatisfied(check({ type: 'playerCombatWins', minimumWins: 3, consecutive: true }), live)).toBe(false)
   })
-
-  it('never completes elimination checks live', () => {
-    expect(isLocationCheckSatisfied(check({ type: 'playersEliminated', minimumPlayers: 1 }), context())).toBe(false)
-  })
 })
 
 describe('stage and round numbers', () => {

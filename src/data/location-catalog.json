@@ -1838,15 +1838,6 @@
   },
   {
     "id": 7431170,
-    "name": "Eliminate a player",
-    "condition": {
-      "type": "playersEliminated",
-      "minimumPlayers": 1
-    },
-    "category": "minor"
-  },
-  {
-    "id": 7431171,
     "name": "Reach Stage 5",
     "condition": {
       "type": "stage",

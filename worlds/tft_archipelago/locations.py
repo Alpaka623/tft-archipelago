@@ -43,12 +43,6 @@ class LevelCondition:
 
 
 @dataclass(frozen=True)
-class PlayersEliminatedCondition:
-    type: Literal["playersEliminated"]
-    minimum_players: int
-
-
-@dataclass(frozen=True)
 class StageCondition:
     type: Literal["stage"]
     minimum_stage: int
@@ -60,7 +54,6 @@ LocationCondition = Union[
     ActiveTraitCountCondition,
     GoldCondition,
     LevelCondition,
-    PlayersEliminatedCondition,
     StageCondition,
 ]
 
@@ -95,8 +88,6 @@ def build_condition(raw: Dict[str, Any]) -> LocationCondition:
         return GoldCondition("gold", raw["minimumGold"])
     if condition_type == "level":
         return LevelCondition("level", raw["minimumLevel"])
-    if condition_type == "playersEliminated":
-        return PlayersEliminatedCondition("playersEliminated", raw["minimumPlayers"])
     if condition_type == "stage":
         return StageCondition("stage", raw["minimumStage"])
     raise ValueError(f"Unknown location condition type: {condition_type}")

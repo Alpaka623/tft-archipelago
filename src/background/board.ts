@@ -185,9 +185,6 @@ export function isLocationCheckSatisfied(location: LocationCheck, context: Locat
       return context.level !== null && context.level >= condition.minimumLevel
     case 'stage':
       return context.stage !== null && context.stage >= condition.minimumStage
-    // Only the match history knows eliminations
-    case 'playersEliminated':
-      return false
   }
 }
 
@@ -274,8 +271,6 @@ export function isLocationCheckSatisfiedByClientResult(location: LocationCheck, 
       return result.traits.filter(trait => trait.tierCurrent > 0).length >= condition.minimumActiveTraits
     case 'level':
       return result.level !== null && result.level >= condition.minimumLevel
-    case 'playersEliminated':
-      return result.playersEliminated !== null && result.playersEliminated >= condition.minimumPlayers
     case 'stage':
       return result.lastRound !== null && getStageFromRound(result.lastRound, result.queueId) >= condition.minimumStage
     case 'gold':
