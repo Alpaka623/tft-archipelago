@@ -21,6 +21,8 @@ import {
   IconHeartHandshake,
   IconInfoCircle,
   IconShieldCheck,
+  IconStar,
+  IconStarOff,
   type Icon,
 } from '@tabler/icons-react'
 import { platform, type SaveDownloadRequest } from '../../platform'
@@ -44,7 +46,7 @@ import type { PageId } from '../shared'
 // Step-by-step walkthrough for a new run, one question per screen. The settings, YAML and
 // downloads come from ../setup.
 const STEP_STORAGE_KEY = 'tft-archipelago-setup-step'
-const STEPS = ['welcome', 'name', 'goal', 'majors', 'unlocks', 'rewards', 'rules', 'summary', 'host'] as const
+const STEPS = ['welcome', 'name', 'goal', 'majors', 'unlocks', 'rewards', 'threeStars', 'rules', 'summary', 'host'] as const
 type StepId = typeof STEPS[number]
 type UnlockMode = 'hardcore' | 'gentle' | 'custom'
 type RewardMode = 'bonus' | 'traps' | 'classic' | 'custom'
@@ -400,6 +402,20 @@ export function SetupPage({ onNavigate }: { onNavigate: (page: PageId) => void }
             </div>
           </>
         )
+      case 'threeStars':
+        return (
+          <>
+            <h2>Can 3-star checks hold unlocks?</h2>
+            <p className="wizard-lead">
+              Getting a specific champion to 3 stars is mostly luck, so progress can end up waiting on a lucky shop. Recommended
+              off when other games are in the multiworld. 3-stars of 4- and 5-costs never hold anything important.
+            </p>
+            <div className="choice-grid two">
+              <ChoiceCard icon={IconStar} selected={settings.threeStarProgression} subtitle="3-stars of 1- to 3-costs can hold unlocks and items for other games" title="Yes" onSelect={() => update({ threeStarProgression: true })} />
+              <ChoiceCard icon={IconStarOff} selected={!settings.threeStarProgression} subtitle="3-star checks only hold one-time items, traps or Nothing" title="No" onSelect={() => update({ threeStarProgression: false })} />
+            </div>
+          </>
+        )
       case 'rules':
         return (
           <>
@@ -425,6 +441,7 @@ export function SetupPage({ onNavigate }: { onNavigate: (page: PageId) => void }
           { label: 'Open at start', value: `${settings.startingMajorChecks} of ${MAJOR_CHECK_TOTAL} majors`, target: 'majors' },
           { label: 'Starting unlocks', value: describeStartItems(settings.startItems), target: 'unlocks' },
           { label: 'Other checks', value: describeRewards(settings), target: 'rewards' },
+          { label: '3-star checks', value: settings.threeStarProgression ? '1- to 3-costs can hold unlocks' : 'Nothing important', target: 'threeStars' },
           { label: 'Rule checking', value: settings.trustMode ? 'Trust mode' : 'Checked', target: 'rules' },
         ]
         return (

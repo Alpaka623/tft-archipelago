@@ -41,6 +41,8 @@ export interface SetupSettings {
   trapShare: number
   // Honor system: the client does not validate restrictions
   trustMode: boolean
+  // 3-star checks for 1- to 3-costs may hold progression; off for multiworlds with other games
+  threeStarProgression: boolean
 }
 
 export const DEFAULT_SETUP: SetupSettings = {
@@ -51,6 +53,7 @@ export const DEFAULT_SETUP: SetupSettings = {
   bonusItemShare: 100,
   trapShare: 0,
   trustMode: false,
+  threeStarProgression: true,
 }
 
 function clamp(value: unknown, min: number, max: number, fallback: number): number {
@@ -73,6 +76,7 @@ export function normalizeSetup(raw: Partial<SetupSettings> | null): SetupSetting
     bonusItemShare: clamp(raw?.bonusItemShare, 0, 100, DEFAULT_SETUP.bonusItemShare),
     trapShare: clamp(raw?.trapShare, 0, MAX_TRAP_SHARE, DEFAULT_SETUP.trapShare),
     trustMode: raw?.trustMode === true,
+    threeStarProgression: raw?.threeStarProgression !== false,
   }
 }
 
@@ -126,6 +130,7 @@ export function buildPlayerYaml(settings: SetupSettings): string {
     `  bonus_item_share: ${settings.bonusItemShare}`,
     `  trap_share: ${settings.trapShare}`,
     `  trust_mode: ${settings.trustMode}`,
+    `  three_star_progression: ${settings.threeStarProgression}`,
     ...(startItemLines ? ['  start_inventory_from_pool:', ...startItemLines] : ['  start_inventory_from_pool: {}']),
     '',
   ].join('\n')

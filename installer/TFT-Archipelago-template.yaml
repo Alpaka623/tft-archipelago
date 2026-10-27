@@ -65,6 +65,14 @@ TFT Archipelago:
     full: 50
     minimal: 0
 
+  trust_mode:
+    # Honor system: the client does not validate your restrictions. Rule violations are not detected
+    # and never invalidate a match, so checks count whenever you reach Top 4 with the right board.
+    # Blockers on the shop, XP and augment buttons stay as reminders. Use this if detection does not
+    # work reliably on your setup (e.g. a non-English client).
+    'false': 50
+    'true': 0
+
   ########
   # Goal #
   ########
@@ -123,13 +131,12 @@ TFT Archipelago:
     random-high: 0 # random value weighted towards higher values
     random-range-0-50: 0 # random value between 0 and 50
 
-  trust_mode:
-    # Honor system: the client does not validate your restrictions. Rule violations are not detected
-    # and never invalidate a match, so checks count whenever you reach Top 4 with the right board.
-    # Blockers on the shop, XP and augment buttons stay as reminders. Use this if detection does not
-    # work reliably on your setup (e.g. a non-English client).
-    'false': 50
-    'true': 0
+  three_star_progression:
+    # Lets 3-Star checks for 1- to 3-cost champions hold progression items, your own or other games'.
+    # Turn it off when playing with other games: a specific 3-Star is luck, so these checks then only hold
+    # one-time items, traps or Nothing. 3-Star checks for 4- and 5-cost champions never hold progression.
+    'false': 0
+    'true': 50
 
   ###########################
   # Item & Location Options #

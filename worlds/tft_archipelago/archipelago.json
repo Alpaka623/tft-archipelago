@@ -1,6 +1,6 @@
 {
   "game": "TFT Archipelago",
-  "world_version": "0.5.0",
+  "world_version": "0.6.0",
   "authors": ["Novy"],
   "minimum_ap_version": "0.6.5"
 }
