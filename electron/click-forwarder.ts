@@ -10,6 +10,8 @@ import type { ManagedWindow, WindowManager } from './window-manager'
 const POLL_INTERVAL_MS = 16
 // how long a press waits for the game to take the capture before it counts as a real window click
 const CAPTURE_WAIT_MS = 150
+// a failing poll repeats every 16 ms, so its warning is logged at most this often
+const POLL_ERROR_LOG_INTERVAL_MS = 10_000
 
 interface ForwardTarget {
   managed: ManagedWindow
@@ -25,12 +27,13 @@ export class ClickForwarder {
   private pressed: ManagedWindow | null = null
   private pendingPress: { managed: ManagedWindow; startedAt: number } | null = null
   private lastMoveKey = ''
+  private lastPollErrorAt = 0
 
   constructor(private readonly game: GameTracker, private readonly windows: WindowManager) {}
 
   start(): void {
     if (this.timer || !this.game.monitor) return
-    this.timer = setInterval(() => this.poll(), POLL_INTERVAL_MS)
+    this.timer = setInterval(() => this.safePoll(), POLL_INTERVAL_MS)
   }
 
   stop(): void {
@@ -38,17 +41,25 @@ export class ClickForwarder {
     this.timer = null
   }
 
-  private poll(): void {
-    let isButtonDown: boolean
-    let isCaptured: boolean
+  // A single failure (e.g. a window closing mid-click or the game window being recreated) must not
+  // end forwarding for the rest of the session; drop the current press and retry next poll
+  private safePoll(): void {
     try {
-      isButtonDown = isPrimaryMouseButtonDown()
-      isCaptured = this.game.monitor?.isGameHoldingMouseCapture() ?? false
+      this.poll()
     } catch (error) {
-      console.warn('Click forwarding poll failed:', error)
-      this.stop()
-      return
+      if (Date.now() - this.lastPollErrorAt > POLL_ERROR_LOG_INTERVAL_MS) {
+        console.warn('Click forwarding poll failed:', error)
+        this.lastPollErrorAt = Date.now()
+      }
+      this.pressed = null
+      this.pendingPress = null
+      this.hovered = null
     }
+  }
+
+  private poll(): void {
+    const isButtonDown = isPrimaryMouseButtonDown()
+    const isCaptured = this.game.monitor?.isGameHoldingMouseCapture() ?? false
     const wasButtonDown = this.wasButtonDown
     this.wasButtonDown = isButtonDown
 
