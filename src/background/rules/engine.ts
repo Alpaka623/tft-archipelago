@@ -16,10 +16,7 @@ export function invalidateRun(reason: string): void {
 }
 
 export function validateCurrentRules(): void {
-  // Trust mode: nothing is validated, so one-time items are not spent automatically either
-  if (slot.trustMode) return
-
-  // Over the limit: use a matching one-time item first, if any
+  // Over the limit: use a matching one-time item first, if any (also in trust mode, where nothing invalidates)
   let state = deriveState()
   while (shop.rerollsUsed > state.allowedRerolls && !bonus.activeTraps.rerollLock && state.bonusItems.stock.reroll > 0) {
     bonus.rerollsThisRound += 1

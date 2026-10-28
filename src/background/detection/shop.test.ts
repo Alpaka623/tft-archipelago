@@ -98,13 +98,13 @@ describe('handleShopUpdate', () => {
     expect(mocks.invalidateRun).toHaveBeenCalledWith('Purchased from locked shop slot 4')
   })
 
-  it('neither invalidates nor spends a Shop Slot Pass in trust mode', () => {
+  it('spends a Shop Slot Pass in trust mode too', () => {
     mocks.deriveState.mockReturnValue({ lockedShopSlots: [4, 5], bonusItems: { stock: { shopSlotPass: 1 } } })
     state.slot.trustMode = true
     detection.handleShopUpdate(FIRST_SHOP)
     detection.handleShopUpdate(withSold(5))
 
-    expect(mocks.consumeBonusItem).not.toHaveBeenCalled()
+    expect(mocks.consumeBonusItem).toHaveBeenCalledWith('shopSlotPass')
     expect(mocks.invalidateRun).not.toHaveBeenCalled()
   })
 

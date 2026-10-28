@@ -14,7 +14,7 @@ import {
 import { broadcastState } from '../broadcast'
 import { logGep } from '../log'
 import { client } from '../runtime'
-import { bonus, session, slot } from '../state'
+import { bonus, session } from '../state'
 import { invalidateRun } from './engine'
 
 export function consumeBonusItem(kind: BonusKind): void {
@@ -77,7 +77,6 @@ export function applyPendingTraps(): void {
 }
 
 export function spendFreeAugmentPickOrInvalidate(reason: string): void {
-  if (slot.trustMode) return
   if (!bonus.activeTraps.augmentLock && deriveState().bonusItems.stock.augmentPick > 0) {
     consumeBonusItem('augmentPick')
     return

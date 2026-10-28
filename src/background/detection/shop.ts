@@ -6,7 +6,7 @@ import { logGep } from '../log'
 import { readBooleanFromRaw } from '../raw'
 import { consumeBonusItem } from '../rules/bonus-usage'
 import { invalidateRun, validateCurrentRules } from '../rules/engine'
-import { bonus, round, shop, slot } from '../state'
+import { bonus, round, shop } from '../state'
 import type { ShopSnapshot } from '../types'
 import { SHOP_BLOCKER_HIDE_DELAY_MS } from '../windows/blocker-rules'
 import { noteShopPurchaseForXpFallback } from './xp'
@@ -204,7 +204,7 @@ function handleShopPurchase(purchasedSlotIndex: number, snapshot: ShopSnapshot):
     phase: getPhaseLabel(),
   })
   const state = deriveState()
-  if (state.lockedShopSlots.includes(purchasedSlotIndex) && !slot.trustMode) {
+  if (state.lockedShopSlots.includes(purchasedSlotIndex)) {
     if (!bonus.activeTraps.shopLock && state.bonusItems.stock.shopSlotPass > 0) {
       // Shop Slot Pass: covers exactly this one purchase
       consumeBonusItem('shopSlotPass')
