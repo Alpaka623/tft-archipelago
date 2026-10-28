@@ -218,7 +218,8 @@ export class WindowManager {
     return { id: managed.name, name: managed.name, left: bounds.x, top: bounds.y, width: bounds.width, height: bounds.height }
   }
 
-  private clampToGameClient(rect: PlatformRect): PlatformRect {
+  // Keeps an in-game window fully inside the game client
+  clampToGameClient(rect: PlatformRect): PlatformRect {
     const clientRect = this.game.getGameClientRect() ?? this.game.getPrimaryDisplayPhysicalRect()
     return {
       ...rect,

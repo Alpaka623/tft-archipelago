@@ -52,10 +52,12 @@ function ShopBlocker() {
   const [rect, setRect] = React.useState<Rect | null>(null)
   const [freeAugmentPicks, setFreeAugmentPicks] = React.useState(0)
 
+  // Drags follow the cursor's screen position relative to where the drag started. Summing
+  // movementX/Y drifts, because the window moves under the cursor while it is dragged.
   const isDraggingRef = React.useRef(false)
-  const dragPosRef = React.useRef({ x: 0, y: 0 })
+  const dragStartRef = React.useRef({ screenX: 0, screenY: 0, x: 0, y: 0 })
   const isResizingRef = React.useRef(false)
-  const resizeSizeRef = React.useRef({ w: 0, h: 0 })
+  const resizeStartRef = React.useRef({ screenX: 0, screenY: 0, w: 0, h: 0 })
   const isTinyBlocker = windowName.startsWith('augment_reroll_')
   const offersFreeAugmentPick = !calibrationMode && freeAugmentPicks > 0
     && AUGMENT_SLOT_BLOCKERS.has(windowName)
@@ -109,15 +111,16 @@ function ShopBlocker() {
     e.stopPropagation()
     e.currentTarget.setPointerCapture(e.pointerId)
     isDraggingRef.current = true
-    dragPosRef.current = { x: rect?.x ?? 0, y: rect?.y ?? 0 }
+    dragStartRef.current = { screenX: e.screenX, screenY: e.screenY, x: rect?.x ?? 0, y: rect?.y ?? 0 }
   }
 
   const handleDragPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current || !windowId) return
     const scale = platform?.pointerToWindowScale() ?? 1
-    dragPosRef.current.x += e.movementX * scale
-    dragPosRef.current.y += e.movementY * scale
-    platform?.changeWindowPosition(windowId, dragPosRef.current.x, dragPosRef.current.y)
+    const start = dragStartRef.current
+    const x = Math.round(start.x + (e.screenX - start.screenX) * scale)
+    const y = Math.round(start.y + (e.screenY - start.screenY) * scale)
+    platform?.changeWindowPosition(windowId, x, y)
   }
 
   const handleDragPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -134,16 +137,22 @@ function ShopBlocker() {
     e.currentTarget.setPointerCapture(e.pointerId)
     isResizingRef.current = true
     const scale = platform?.pointerToWindowScale() ?? 1
-    resizeSizeRef.current = { w: rect?.w ?? window.innerWidth * scale, h: rect?.h ?? window.innerHeight * scale }
+    resizeStartRef.current = {
+      screenX: e.screenX,
+      screenY: e.screenY,
+      w: rect?.w ?? window.innerWidth * scale,
+      h: rect?.h ?? window.innerHeight * scale,
+    }
   }
 
   const handleResizePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isResizingRef.current || !windowId) return
     e.stopPropagation()
     const scale = platform?.pointerToWindowScale() ?? 1
-    resizeSizeRef.current.w = Math.max(minBlockerSize, resizeSizeRef.current.w + e.movementX * scale)
-    resizeSizeRef.current.h = Math.max(minBlockerSize, resizeSizeRef.current.h + e.movementY * scale)
-    platform?.changeWindowSize(windowId, resizeSizeRef.current.w, resizeSizeRef.current.h)
+    const start = resizeStartRef.current
+    const w = Math.max(minBlockerSize, Math.round(start.w + (e.screenX - start.screenX) * scale))
+    const h = Math.max(minBlockerSize, Math.round(start.h + (e.screenY - start.screenY) * scale))
+    platform?.changeWindowSize(windowId, w, h)
   }
 
   const handleResizePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {

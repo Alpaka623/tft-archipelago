@@ -180,9 +180,10 @@ export async function handleBridgeRequest(
       const managed = windows.get(request.windowId)
       if (!managed) return undefined
       if (managed.def.kind === 'ingame') {
-        managed.gameRect = request.type === 'changeWindowPosition'
+        // Calibration drags must not push a blocker off the game client, where it cannot be grabbed again
+        managed.gameRect = windows.clampToGameClient(request.type === 'changeWindowPosition'
           ? { ...managed.gameRect, x: request.x, y: request.y }
-          : { ...managed.gameRect, w: Math.max(1, request.width), h: Math.max(1, request.height) }
+          : { ...managed.gameRect, w: Math.max(1, request.width), h: Math.max(1, request.height) })
         windows.applyIngameBounds(managed)
       } else if (request.type === 'changeWindowPosition') {
         managed.win.setPosition(request.x, request.y)
