@@ -1,8 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { LOCATION_CHECKS } from '../data/locations'
+import type { TftLogEvent } from '../platform/tft-log'
 import type { LocationCheck, LocationCondition } from '../data/locations'
 import { championTraits, isLocationCheckSatisfiedByClientResult, TOCKERS_TRIALS_QUEUE_ID } from './board'
 import {
+  ClientMatchTracker,
   type ClientMatchResult,
+  type ClientMatchTrackerDeps,
   type PendingClientMatch,
   findMatchHistoryResult,
   getTockersTrialsVictory,
@@ -10,6 +14,7 @@ import {
   readEndOfGamePlacement,
   readEndOfGameResult,
   readGameflowGame,
+  readLogGame,
 } from './client-match'
 
 const PUUID = 'me-puuid'
@@ -213,5 +218,137 @@ describe('isLocationCheckSatisfiedByClientResult', () => {
 
   it('never fulfils live-only conditions', () => {
     expect(isLocationCheckSatisfiedByClientResult(check({ type: 'gold', minimumGold: 0 }), result())).toBe(false)
+  })
+})
+
+// Standalone TFT client (18.6): the League client never sees the match, TFT.log names it
+describe('standalone client via TFT.log', () => {
+  const GAME_ID = 8039442375
+  const ME = 'cd1a3207-c62c-572f-80ab-6f9f2870beb6'
+  const BOT = '00000000-0000-0000-0000-000000000000'
+  const gameInfo = (overrides: Partial<Extract<TftLogEvent, { type: 'game_info' }>> = {}): TftLogEvent => ({
+    type: 'game_info',
+    at: '2026.11.08-00.00.44:215',
+    gameId: GAME_ID,
+    queueId: 1090,
+    puuid: ME,
+    gameMode: 'TFT',
+    gameState: 'IN_PROGRESS',
+    ...overrides,
+  })
+  const eogFile = (standing: number) => ({
+    gameId: GAME_ID,
+    queueId: 1090,
+    statsBlock: {
+      players: [
+        { PUUID: BOT, boardPieces: [{ championName: championId, itemNames: [], price: 5, starLevel: 3 }], ffaStanding: 1, health: 40 },
+        { PUUID: ME, boardPieces: [{ championName: championId, itemNames: ['DA_InfinityEdge'], price: 1, starLevel: 2 }], ffaStanding: standing, health: -99 },
+      ],
+    },
+  })
+
+  function createTracker() {
+    const delivered: { pending: PendingClientMatch; result: ClientMatchResult }[] = []
+    const deps: ClientMatchTrackerDeps = {
+      // no League client running
+      get: async () => null,
+      readFile: async () => null,
+      writeFile: async () => true,
+      log: () => {},
+      canDeliverResults: () => true,
+      deliverResult: (pending, result) => {
+        delivered.push({ pending, result })
+        return []
+      },
+      onStatusChanged: () => {},
+    }
+    const tracker = new ClientMatchTracker(deps)
+    const poll = () => (tracker as unknown as { poll(): Promise<void> }).poll()
+    return { tracker, delivered, poll }
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('takes the running game and puuid from the game-update message', () => {
+    const { tracker } = createTracker()
+    tracker.handleLogEvents([gameInfo()])
+    expect(tracker.getCurrentGame()).toMatchObject({ gameId: GAME_ID, queueId: 1090, queueName: 'Normal', isCounted: true })
+    expect(tracker.getCurrentGame()?.detectedAt).toBe(Date.UTC(2026, 10, 8, 0, 0, 44, 215))
+    expect(tracker.getPuuid()).toBe(ME)
+  })
+
+  it('ignores other modes, finished games and older replayed lines', () => {
+    const { tracker } = createTracker()
+    expect(readLogGame(gameInfo({ gameMode: 'CLASSIC' }) as Extract<TftLogEvent, { type: 'game_info' }>, 0)).toBeNull()
+    expect(readLogGame(gameInfo({ gameState: 'TERMINATED' }) as Extract<TftLogEvent, { type: 'game_info' }>, 0)).toBeNull()
+    tracker.handleLogEvents([gameInfo()])
+    tracker.handleLogEvents([gameInfo({ gameId: 1, at: '2026.11.07-20.00.00:000' })])
+    expect(tracker.getCurrentGame()?.gameId).toBe(GAME_ID)
+  })
+
+  it('reads our board from the eight-player file without the League client', () => {
+    const { tracker } = createTracker()
+    tracker.handleLogEvents([gameInfo()])
+    expect(readEndOfGameBoard(eogFile(8), tracker.getPuuid())).toMatchObject({
+      gameId: GAME_ID,
+      placement: 8,
+      health: -99,
+      units: [{ championId, starLevel: 2, itemIds: ['DA_InfinityEdge'] }],
+    })
+  })
+
+  it('fulfils "Field a 2-Star Varus" from the reported 8th-place board', () => {
+    const { tracker } = createTracker()
+    tracker.handleLogEvents([gameInfo()])
+    const file = eogFile(8)
+    file.statsBlock.players[1].boardPieces = [{ championName: 'DA_18_Varus', itemNames: ['DA_InfinityEdge'], price: 1, starLevel: 2 }]
+    const varus = LOCATION_CHECKS.find(location => location.name === 'Field a 2-Star Varus')!
+    const board = readEndOfGameBoard(file, tracker.getPuuid())!
+    expect(board.gameId).toBe(tracker.getCurrentGame()?.gameId)
+    expect(isLocationCheckSatisfiedByClientResult(varus, { ...board, placement: 8, level: null, lastRound: null })).toBe(true)
+  })
+
+  it('files the session result under the game id and delivers the final board', async () => {
+    const { tracker, delivered, poll } = createTracker()
+    const startedAt = Date.UTC(2026, 10, 7, 23, 59, 0)
+    tracker.handleLogEvents([gameInfo(), { type: 'match_start', at: '2026.11.08-00.00.58:272' }])
+    tracker.handleEndOfGameStats(eogFile(8))
+    tracker.handleLogEvents([{ type: 'match_end', at: '2026.11.08-00.11.58:035' }])
+
+    tracker.queueSessionResult({ sessionStartedAt: startedAt, isValidRun: true, violationReason: null, logRound: 20 })
+    expect(tracker.getStatus().pending).toEqual([
+      { gameId: GAME_ID, queueName: 'Normal', placement: null, status: 'waiting_for_archipelago' },
+    ])
+
+    vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 5000)
+    await poll()
+    expect(delivered).toHaveLength(1)
+    expect(delivered[0].pending.gameId).toBe(GAME_ID)
+    expect(delivered[0].result).toMatchObject({ gameId: GAME_ID, placement: 8, units: [{ championId, starLevel: 2 }] })
+  })
+
+  it('keeps an end-of-game file that arrived before the puuid', async () => {
+    const { tracker, poll } = createTracker()
+    tracker.handleEndOfGameStats(eogFile(3))
+    tracker.handleLogEvents([gameInfo()])
+    await poll()
+    tracker.queueSessionResult({ sessionStartedAt: Date.UTC(2026, 10, 7, 23, 59, 0), isValidRun: true, violationReason: null, logRound: null })
+    expect(tracker.getStatus().pending[0]).toMatchObject({ gameId: GAME_ID, status: 'waiting_for_archipelago' })
+  })
+
+  it('restores the run when the log shows the same match running again', () => {
+    const { tracker } = createTracker()
+    const startedAt = Date.UTC(2026, 10, 7, 23, 59, 0)
+    tracker.handleLogEvents([gameInfo(), { type: 'match_start', at: '2026.11.08-00.00.58:272' }])
+    tracker.queueSessionResult({ sessionStartedAt: startedAt, isValidRun: false, violationReason: 'test', logRound: 5 })
+    // crashed mid-match: no EndOfGame line before the new process logs the game again
+    tracker.handleLogEvents([gameInfo({ at: '2026.11.08-00.05.00:000' }), { type: 'match_start', at: '2026.11.08-00.05.10:000' }])
+    expect(tracker.takeReconnectSession()).toMatchObject({ gameId: GAME_ID, isValidRun: false, sessionStartedAt: startedAt })
+
+    tracker.queueSessionResult({ sessionStartedAt: startedAt, isValidRun: true, violationReason: null, logRound: 30 })
+    tracker.handleLogEvents([{ type: 'match_end', at: '2026.11.08-00.11.58:035' }])
+    expect(tracker.takeReconnectSession()).toBeNull()
   })
 })

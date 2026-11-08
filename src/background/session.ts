@@ -45,18 +45,26 @@ function handleSessionEnd(reason: string): void {
   forgetOverlayForEndedSession()
 }
 
+// The game process restarted in the same match (crash or reconnect): continue that match's run.
+// The standalone client only names the game in TFT.log, which arrives after the session start;
+// a late restore keeps a violation that happened in the meantime.
+function restoreReconnectedRun(isLate: boolean): void {
+  const reconnectSession = clientMatchTracker?.takeReconnectSession() ?? null
+  if (!reconnectSession) return
+  session.startedAt = reconnectSession.sessionStartedAt
+  if (!isLate || !reconnectSession.isValidRun) {
+    run.isValid = reconnectSession.isValidRun
+    run.violationReason = reconnectSession.violationReason
+  }
+  if (isLate) broadcastState()
+}
+
 function handleSessionStart(reason: string): void {
   session.isTftRunning = true
   session.startedAt = Date.now()
   resetMatchDetectionState()
   logGep('TFT session started: detection state reset', { reason })
-  // The game process restarted in the same match (crash or reconnect): continue that match's run
-  const reconnectSession = clientMatchTracker?.takeReconnectSession() ?? null
-  if (reconnectSession) {
-    session.startedAt = reconnectSession.sessionStartedAt
-    run.isValid = reconnectSession.isValidRun
-    run.violationReason = reconnectSession.violationReason
-  }
+  restoreReconnectedRun(false)
   prewarmBlockerWindows(`${reason}; TFT session started`)
   broadcastState()
   evaluateLiveBoard('TFT session start')
@@ -88,8 +96,11 @@ export function trackTftSession(): void {
   })
 }
 
-// TFT client log (Electron): the round count feeds the live stage
+// TFT client log (Electron): the round count feeds the live stage, the game-update message names the game
 export function handleTftLogBatch(batch: TftLogBatch): void {
+  // Standalone client: running game and puuid; the League client no longer sees the match
+  clientMatchTracker?.handleLogEvents(batch.events)
+  if (session.isTftRunning) restoreReconnectedRun(true)
   const { roundChanged } = tftLogTracker.handleEvents(batch.events)
   // the next round's shop refresh follows; vision may miss the stage label change
   const roundEndedAt = getRoundEndTimes(batch.events).pop()
