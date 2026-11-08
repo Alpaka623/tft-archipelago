@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LocationCheck, LocationCondition } from '../data/locations'
 import { championTraits, isLocationCheckSatisfiedByClientResult, TOCKERS_TRIALS_QUEUE_ID } from './board'
 import {
   type ClientMatchResult,
+  type ClientMatchTrackerDeps,
   type PendingClientMatch,
+  ClientMatchTracker,
+  describeTftGame,
   findMatchHistoryResult,
   getTockersTrialsVictory,
   readEndOfGameBoard,
@@ -213,5 +216,159 @@ describe('isLocationCheckSatisfiedByClientResult', () => {
 
   it('never fulfils live-only conditions', () => {
     expect(isLocationCheckSatisfiedByClientResult(check({ type: 'gold', minimumGold: 0 }), result())).toBe(false)
+  })
+})
+
+describe('describeTftGame', () => {
+  it('names counted and other queues', () => {
+    expect(describeTftGame(1, 1220, 0)).toMatchObject({ queueName: "Tocker's Trials", isCounted: true })
+    expect(describeTftGame(1, 1160, 0)).toMatchObject({ queueName: 'Double Up', isCounted: false })
+    expect(describeTftGame(1, 1230, 0)).toMatchObject({ queueName: 'Queue 1230', isCounted: false })
+    expect(describeTftGame(1, null, 0)).toMatchObject({ queueName: 'Unknown', isCounted: false })
+  })
+})
+
+// Standalone TFT client: no League client, identity from the TFT log, result from TFTEoGStats.json
+describe('ClientMatchTracker without the League client', () => {
+  const GAME_ID = 8038149828
+  const endOfGameFile = (players: unknown[]) => ({ gameId: GAME_ID, queueId: 1100, statsBlock: { players } })
+  const otherPlayer = { PUUID: 'other', ffaStanding: 1, health: 30, boardPieces: [] }
+  const me = { PUUID, ffaStanding: 2, health: 20, boardPieces: [{ championName: championId, itemNames: [], starLevel: 2 }] }
+
+  let delivered: { pending: PendingClientMatch; result: ClientMatchResult }[]
+  let tracker: ClientMatchTracker
+
+  function createTracker(): ClientMatchTracker {
+    const deps: ClientMatchTrackerDeps = {
+      get: () => Promise.resolve(null),
+      readFile: () => Promise.resolve(null),
+      writeFile: () => Promise.resolve(true),
+      log: () => undefined,
+      canDeliverResults: () => true,
+      deliverResult: (pending, result) => {
+        delivered.push({ pending, result })
+        return []
+      },
+      onStatusChanged: () => undefined,
+    }
+    return new ClientMatchTracker(deps)
+  }
+
+  const processPending = () => tracker['processPending']()
+  const endSession = (sessionStartedAt: number) => tracker.queueSessionResult({
+    sessionStartedAt, isValidRun: true, violationReason: null, logRound: null,
+  })
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(1_000_000)
+    delivered = []
+    tracker = createTracker()
+    tracker.setGameProcessRunning(true)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('knows the running game and player from the log', () => {
+    tracker.handleLogGameStart({ gameId: GAME_ID, queueId: 1100, puuid: PUUID })
+    tracker.handleLogLobbyState('InGame')
+    expect(tracker.getActiveGame()).toMatchObject({ gameId: GAME_ID, queueName: 'Ranked', isCounted: true })
+    expect(tracker.getPuuid()).toBe(PUUID)
+    expect(tracker.getStatus()).toMatchObject({ connected: false, tftClientState: 'InGame' })
+
+    tracker.handleLogMatchEnd()
+    expect(tracker.getActiveGame()).toBeNull()
+    tracker.setGameProcessRunning(false)
+    expect(tracker.getStatus().tftClientState).toBeNull()
+  })
+
+  it('delivers the final board of an 8-player file after the match ends', async () => {
+    tracker.handleLogGameStart({ gameId: GAME_ID, queueId: 1100, puuid: PUUID })
+    tracker.handleEndOfGameStats(endOfGameFile([otherPlayer, me]))
+    endSession(Date.now())
+    tracker.handleLogMatchEnd()
+
+    await processPending()
+    expect(delivered).toHaveLength(0)
+
+    vi.advanceTimersByTime(5000)
+    await processPending()
+    expect(delivered).toHaveLength(1)
+    expect(delivered[0].pending).toMatchObject({ gameId: GAME_ID, queueName: 'Ranked' })
+    expect(delivered[0].result).toMatchObject({ gameId: GAME_ID, placement: 2 })
+    expect(tracker.getStatus().lastOutcome).toMatchObject({ gameId: GAME_ID, kind: 'evaluated', placement: 2 })
+  })
+
+  it('takes a final file written after the match end', async () => {
+    tracker.handleLogGameStart({ gameId: GAME_ID, queueId: 1100, puuid: PUUID })
+    endSession(Date.now())
+    tracker.handleLogMatchEnd()
+    tracker.handleEndOfGameStats(endOfGameFile([otherPlayer, me]))
+
+    vi.advanceTimersByTime(5000)
+    await processPending()
+    expect(delivered.map(entry => entry.result.placement)).toEqual([2])
+  })
+
+  it('waits while the game is still running', async () => {
+    tracker.handleLogGameStart({ gameId: GAME_ID, queueId: 1100, puuid: PUUID })
+    tracker.handleEndOfGameStats(endOfGameFile([otherPlayer, me]))
+    // game process crashed mid-match
+    endSession(Date.now())
+    vi.advanceTimersByTime(5000)
+    // still active in the log: a reconnect continues it
+    await processPending()
+    expect(delivered).toHaveLength(0)
+    expect(tracker.takeReconnectSession()).toMatchObject({ gameId: GAME_ID, isValidRun: true })
+  })
+
+  it('never attaches a game that already ended to a later process exit', async () => {
+    // a whole match replayed from the log at app start
+    tracker.handleLogGameStart({ gameId: GAME_ID, queueId: 1100, puuid: PUUID })
+    tracker.handleEndOfGameStats(endOfGameFile([otherPlayer, me]))
+    tracker.handleLogMatchEnd()
+
+    endSession(Date.now())
+    vi.advanceTimersByTime(5000)
+    await processPending()
+    expect(delivered).toHaveLength(0)
+    expect(tracker.getStatus().pending).toEqual([
+      expect.objectContaining({ gameId: null, status: 'waiting_for_result' }),
+    ])
+  })
+
+  it('shows no running game from an old log while TFT is closed', () => {
+    tracker.setGameProcessRunning(false)
+    tracker.handleLogGameStart({ gameId: GAME_ID, queueId: 1220, puuid: PUUID })
+    expect(tracker.getActiveGame()).toBeNull()
+    expect(tracker.getStatus()).toMatchObject({ currentGame: null, tftClientState: null })
+  })
+
+  it('forgets the old game when a new log file starts', () => {
+    // old log ended mid-match (crash), read at app start
+    tracker.handleLogGameStart({ gameId: GAME_ID, queueId: 1100, puuid: PUUID })
+    tracker.handleLogFileStarted()
+    expect(tracker.getActiveGame()).toBeNull()
+  })
+
+  it('leaves the game when the client is back in the menu', () => {
+    tracker.handleLogGameStart({ gameId: GAME_ID, queueId: 1100, puuid: PUUID })
+    tracker.handleLogLobbyState('Frontend')
+    expect(tracker.getActiveGame()).toBeNull()
+  })
+
+  it('queues nothing for a client closed from its menu', () => {
+    tracker.queueSessionResult({ sessionStartedAt: Date.now(), isValidRun: true, violationReason: null, logRound: null, requireKnownGame: true })
+    expect(tracker.getStatus().pending).toEqual([])
+    expect(tracker.getStatus().lastOutcome).toBeNull()
+  })
+
+  it('finishes uncounted queues without a result', () => {
+    tracker.handleLogGameStart({ gameId: GAME_ID, queueId: 1160, puuid: PUUID })
+    endSession(Date.now())
+    expect(tracker.getStatus().lastOutcome).toMatchObject({ kind: 'not_counted', queueName: 'Double Up' })
+    expect(tracker.getStatus().pending).toEqual([])
   })
 })

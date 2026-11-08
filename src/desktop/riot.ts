@@ -15,8 +15,27 @@ export const PENDING_STATUS_LABELS: Record<ClientPendingStatus, string> = {
   waiting_for_archipelago: 'Waiting for Archipelago',
 }
 
-// Maps the League client gameflow phase onto the four steps shown in the UI
+// Lobby states from the TFT client log (standalone client)
+function describeTftClientState(state: string): RiotPhaseInfo {
+  switch (state) {
+    case 'Frontend':
+    case 'SoloMode':
+    case 'SocialMode':
+      return { label: 'In lobby', tone: 'ok', step: 0 }
+    case 'Matchmaking':
+      return { label: 'In queue', tone: 'ok', step: 1 }
+    case 'InGame':
+      return { label: 'In game', tone: 'warn', step: 2 }
+    default:
+      return state.startsWith('EndOfGame')
+        ? { label: 'Match ended', tone: 'ok', step: 3 }
+        : { label: 'Running', tone: 'ok', step: -1 }
+  }
+}
+
+// Maps the TFT client state (or, without it, the League client gameflow phase) onto the four steps shown in the UI
 export function describeRiotPhase(status: ClientMatchStatus): RiotPhaseInfo {
+  if (status.tftClientState !== null) return describeTftClientState(status.tftClientState)
   if (!status.connected) return { label: 'Not running', tone: 'idle', step: -1 }
 
   switch (status.phase) {

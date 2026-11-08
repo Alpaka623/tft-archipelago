@@ -261,7 +261,7 @@ function StatusBlock({ state, onSelect }: { state: AppState; onSelect: (page: Pa
       {riot && (
         <div className="sidebar-status-row">
           <span className={`dot ${riot.tone}`} />
-          <span>Riot client</span>
+          <span>TFT client</span>
           <span className="faint">{riot.label}</span>
         </div>
       )}

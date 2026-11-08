@@ -47,6 +47,10 @@ export class TftLogTracker {
         this.completedRounds = 0
         this.matchStartedAt = parseTftLogTimestamp(event.at)
         roundChanged = true
+      } else if (event.type === 'match_end') {
+        // standalone client: back in the menu, no live round until the next match
+        this.matchStartedAt = null
+        roundChanged = true
       } else if (event.type === 'phase' && ROUND_END_PHASES.has(event.phase)) {
         this.completedRounds += 1
         roundChanged = true

@@ -67,7 +67,7 @@ const FAQ_SECTIONS: FaqSection[] = [
         keywords: 'open running start before game closed offline connect',
         answer: (
           <>
-            <p>Yes. Start the app and connect to Archipelago before you queue. Checks come from the TFT client's own files and the Riot client while the game runs. A match played without the app is not tracked.</p>
+            <p>Yes. Start the app and connect to Archipelago before you queue. Checks come from the TFT client's own files and the screen while the game runs. A match played without the app is not tracked.</p>
             <p>If you lose the Archipelago connection, completed checks are queued and sent when you connect again.</p>
           </>
         ),
@@ -282,15 +282,15 @@ const FAQ_SECTIONS: FaqSection[] = [
         question: 'My match result shows as pending. Is that a problem?',
         keywords: 'pending result waiting match history minutes delay riot client',
         answer: (
-          <p>Usually the result arrives within seconds after the game closes. If the TFT client did not write its final file, the app waits for Riot's match history instead. It lists a game only a few minutes later. Keep the app open; pending results are also saved and finished on the next start.</p>
+          <p>Usually the result arrives within seconds after you leave the match. If the TFT client did not write its final file, the app waits for Riot's match history instead, which needs the League client and lists a game only a few minutes later. Keep the app open; pending results are also saved and finished on the next start.</p>
         ),
       },
       {
         id: 'riot-client',
-        question: 'The sidebar does not show my Riot client.',
-        keywords: 'riot client league client not found lockfile phase lobby',
+        question: 'The sidebar says the TFT client is not running.',
+        keywords: 'riot client league client tft client not found not running lockfile phase lobby standalone',
         answer: (
-          <p>The app reads the Riot client running on this PC. Start the Riot client and log in. The status updates within a few seconds. Without it, the app cannot tell which mode you are playing, so live checks wait and results may only arrive later from the match history.</p>
+          <p>The app reads the TFT client's own log and result file in <code>%LOCALAPPDATA%/TFT/Saved/Logs</code>, so the status shows up a few seconds after TFT opens. You do not need the League client. If your TFT logs are in another folder, set <code>tftLogDir</code> in <code>Documents/TFTArchipelago/electron-config.json</code>. If the League client happens to run, the app also uses its match history as a fallback.</p>
         ),
       },
     ],

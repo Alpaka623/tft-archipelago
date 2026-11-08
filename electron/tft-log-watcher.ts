@@ -21,6 +21,8 @@ export class TftLogWatcher {
   private fileIdentity = ''
   private partialLine = ''
   private hasReadInitialLog = false
+  // Set when a new file starts; sent with the next batch that has events
+  private isNewFile = false
   private endOfGameModifiedAt = 0
   private isPolling = false
 
@@ -67,6 +69,7 @@ export class TftLogWatcher {
       this.fileIdentity = identity
       this.offset = 0
       this.partialLine = ''
+      this.isNewFile = true
     }
     if (stat.size === this.offset) {
       this.hasReadInitialLog = true
@@ -93,7 +96,9 @@ export class TftLogWatcher {
 
     const isReplay = !this.hasReadInitialLog
     this.hasReadInitialLog = true
-    if (events.length > 0) this.callbacks.onLogEvents({ events, isReplay })
+    if (events.length === 0) return
+    this.callbacks.onLogEvents({ events, isReplay, isNewFile: this.isNewFile })
+    this.isNewFile = false
   }
 
   private async readEndOfGame(): Promise<void> {

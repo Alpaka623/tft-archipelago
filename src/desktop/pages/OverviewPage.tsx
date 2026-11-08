@@ -144,7 +144,7 @@ function RiotClientPanel({ status }: { status: ClientMatchStatus }) {
   return (
     <section className="panel">
       <div className="panel-header">
-        <h3><IconDeviceGamepad2 size={16} />Riot client</h3>
+        <h3><IconDeviceGamepad2 size={16} />TFT client</h3>
         {game
           ? <span className={`badge ${game.isCounted ? 'warn' : ''}`}>{game.queueName} · {game.isCounted ? 'counted' : 'not counted'}</span>
           : <span className={`badge ${phase.tone === 'idle' ? '' : 'ok'}`}>{phase.label}</span>}

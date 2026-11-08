@@ -135,7 +135,7 @@ function logBoardFileHealth(): void {
 export function evaluateLiveBoard(source: string): void {
   if (latestBoardStats === null || !session.isTftRunning || !clientMatchTracker) return
   const board = readEndOfGameBoard(latestBoardStats, clientMatchTracker.getPuuid())
-  const game = clientMatchTracker.getCurrentGame()
+  const game = clientMatchTracker.getActiveGame()
   // An older game's file (e.g. at app start) never counts for the running game
   if (!board || !game || board.gameId !== game.gameId) return
   if (!run.isValid || !game.isCounted) return

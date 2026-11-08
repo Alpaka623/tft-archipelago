@@ -60,7 +60,11 @@ export const slot = {
 // The running TFT process and the local player
 export const session = {
   isTftRunning: false,
+  // Process start, or the match start once the TFT log shows one (standalone client: one process, many matches)
   startedAt: 0,
+  // Electron, from the TFT log. 'unknown': process started, no lobby state seen yet (a League-client launch
+  // starts the process for the match itself). 'menu': standalone client menu. 'in_match': between match start and end.
+  matchState: 'unknown' as 'unknown' | 'menu' | 'in_match',
   gameWidth: 0,
   gameHeight: 0,
   localPlayerName: null as string | null,

@@ -2,7 +2,10 @@ import type { ClientApiResponse } from '../platform/types'
 import { computeClientBoardTraits, TOCKERS_TRIALS_FINAL_ROUND, TOCKERS_TRIALS_QUEUE_ID } from './board'
 import { isRecord, readNumberFromRaw } from './raw'
 
-// Match start, placement and final board via the LCU (Electron). Live events come from src/vision.
+// Match identity, placement and final board (Electron). Two sources:
+// - the TFT client's own log and TFTEoGStats.json (standalone client since 2026-11-03, no League client);
+// - the League client's local API (LCU) when TFT is launched from it; it adds match history as a follow-up.
+// Live events come from src/vision.
 
 // from /lol-game-queues/v1/queues
 export const COUNTED_TFT_QUEUES: Record<number, string> = {
@@ -10,6 +13,16 @@ export const COUNTED_TFT_QUEUES: Record<number, string> = {
   1100: 'Ranked',
   1220: "Tocker's Trials",
 }
+
+// Names for queues that are shown but not counted
+const OTHER_TFT_QUEUE_NAMES: Record<number, string> = {
+  1110: 'Tutorial',
+  1160: 'Double Up',
+  6110: 'Set Revival',
+}
+
+// Lobby states of the standalone client that mean the player is in the menu, not in a match
+export const TFT_MENU_LOBBY_STATES = new Set(['Frontend', 'SoloMode', 'SocialMode', 'Matchmaking'])
 
 // Tocker's Trials always reports placement 1, so majors need a win instead: reach 3-10 with a
 // life left. Surrender writes health -99 to TFTEoGStats.json.
@@ -90,6 +103,8 @@ export interface ClientMatchStatus {
   currentGame: ClientGameInfo | null
   pending: { gameId: number | null; queueName: string; placement: number | null; status: ClientPendingStatus }[]
   lastOutcome: ClientMatchOutcome | null
+  // Lobby state from the TFT client log while the game process runs (Frontend, Matchmaking, InGame, ...)
+  tftClientState: string | null
 }
 
 export interface ClientMatchOutcome {
@@ -125,11 +140,21 @@ export function readGameflowGame(session: unknown, detectedAt: number): ClientGa
   if (gameMode !== 'TFT' || gameId === null || gameId <= 0) return null
 
   const queueId = readNumberFromRaw(queue?.['id'])
+  return describeTftGame(gameId, queueId, detectedAt, readString(queue?.['description']) ?? readString(queue?.['type']))
+}
+
+export function describeTftGame(
+  gameId: number,
+  queueId: number | null,
+  detectedAt: number,
+  fallbackName: string | null = null,
+): ClientGameInfo {
   const countedName = queueId !== null ? COUNTED_TFT_QUEUES[queueId] : undefined
+  const otherName = queueId !== null ? OTHER_TFT_QUEUE_NAMES[queueId] : undefined
   return {
     gameId,
     queueId,
-    queueName: countedName ?? readString(queue?.['description']) ?? readString(queue?.['type']) ?? 'Unknown',
+    queueName: countedName ?? fallbackName ?? otherName ?? (queueId !== null ? `Queue ${queueId}` : 'Unknown'),
     isCounted: countedName !== undefined,
     detectedAt,
   }
@@ -290,14 +315,22 @@ export function getTockersTrialsVictory(pending: PendingClientMatch, result: Cli
 export class ClientMatchTracker {
   private connected = false
   private phase: string | null = null
-  private puuid: string | null = null
+  // from the League client; history requests need it
+  private clientPuuid: string | null = null
+  // from the TFT client log at game start
+  private logPuuid: string | null = null
   private currentGame: ClientGameInfo | null = null
+  // TFT client log: between game start and leaving the match
+  private isLogGameActive = false
+  private tftClientState: string | null = null
+  private isGameProcessRunning = false
   private pending: PendingClientMatch[] = []
   private lastOutcome: ClientMatchOutcome | null = null
   private lastResultPollAt = 0
   private isPolling = false
   private hasLoadedPending = false
   private readonly finishedGameIds = new Set<number>()
+  private readonly endedLogGameIds = new Set<number>()
   // EoG files can show up before we notice the session ended
   private readonly endOfGameByGameId = new Map<number, ClientMatchResult>()
   // needs the puuid, which only comes with the client connection
@@ -316,7 +349,8 @@ export class ClientMatchTracker {
     return {
       connected: this.connected,
       phase: this.phase,
-      currentGame: this.currentGame,
+      // only the running game; the last game seen may be from an old log read at app start
+      currentGame: this.getActiveGame(),
       pending: this.pending.filter(entry => !entry.endOfGameDelivered).map(entry => ({
         gameId: entry.gameId,
         queueName: entry.queueName,
@@ -324,22 +358,84 @@ export class ClientMatchTracker {
         status: this.getPendingStatus(entry),
       })),
       lastOutcome: this.lastOutcome,
+      tftClientState: this.isGameProcessRunning ? this.tftClientState : null,
     }
   }
 
   getPuuid(): string | null {
-    return this.puuid
+    return this.clientPuuid ?? this.logPuuid
   }
 
+  // The last game seen; may already be over (getActiveGame is the running one)
   getCurrentGame(): ClientGameInfo | null {
     return this.currentGame
+  }
+
+  // The game that is running right now, from either source
+  getActiveGame(): ClientGameInfo | null {
+    return this.isInGame() ? this.currentGame : null
+  }
+
+  // TFT client log: the game server assigned a game ("gsm/game-update/IN_PROGRESS")
+  handleLogGameStart(event: { gameId: number; queueId: number | null; puuid: string | null }): void {
+    if (event.puuid) this.logPuuid = event.puuid
+    this.isLogGameActive = true
+    if (event.gameId !== this.currentGame?.gameId) {
+      this.currentGame = describeTftGame(event.gameId, event.queueId, Date.now())
+      this.deps.log('Client match: TFT game detected from the TFT client log', {
+        gameId: this.currentGame.gameId,
+        queueId: this.currentGame.queueId,
+        queue: this.currentGame.queueName,
+        counted: this.currentGame.isCounted,
+      })
+    }
+    this.deps.onStatusChanged()
+  }
+
+  // A new TFT.log means a new game process: nothing from the previous file is running anymore
+  handleLogFileStarted(): void {
+    if (!this.isLogGameActive && this.tftClientState === null) return
+    this.isLogGameActive = false
+    this.tftClientState = null
+    this.deps.onStatusChanged()
+  }
+
+  handleLogLobbyState(state: string): void {
+    // back in the menu without a logged match end (e.g. the match was never entered)
+    if (TFT_MENU_LOBBY_STATES.has(state)) this.isLogGameActive = false
+    if (state === this.tftClientState) return
+    this.tftClientState = state
+    this.deps.onStatusChanged()
+  }
+
+  getTftClientState(): string | null {
+    return this.tftClientState
+  }
+
+  // TFT client log: the player left the match ("Exiting LobbyState[InGame]"). Queue the result first.
+  handleLogMatchEnd(): void {
+    // a later process exit must not pick this game up again (e.g. a match replayed from the log at app start)
+    if (this.currentGame) this.endedLogGameIds.add(this.currentGame.gameId)
+    if (!this.isLogGameActive) return
+    this.isLogGameActive = false
+    this.deps.onStatusChanged()
+  }
+
+  setGameProcessRunning(isRunning: boolean): void {
+    if (isRunning === this.isGameProcessRunning) return
+    this.isGameProcessRunning = isRunning
+    if (!isRunning) {
+      this.isLogGameActive = false
+      this.tftClientState = null
+    }
+    this.deps.onStatusChanged()
   }
 
   // game process closed, rule state gets frozen here
   // also replayed once at app start for a pending game
   handleEndOfGameStats(stats: unknown): void {
-    const result = readEndOfGameResult(stats, this.puuid)
-    if (!result && this.puuid === null) {
+    const result = readEndOfGameResult(stats, this.getPuuid())
+    if (!result && this.getPuuid() === null) {
       this.unparsedEndOfGameStats = stats
       return
     }
@@ -363,13 +459,20 @@ export class ClientMatchTracker {
     isValidRun: boolean
     violationReason: string | null
     logRound: number | null
+    // only queue when a game of this session is known (a standalone client closed from its menu played none)
+    requireKnownGame?: boolean
   }): void {
     // game from an earlier session
     const game = this.currentGame
       && !this.finishedGameIds.has(this.currentGame.gameId)
+      && !this.endedLogGameIds.has(this.currentGame.gameId)
       && this.currentGame.detectedAt >= session.sessionStartedAt - GAME_DETECTION_LEAD_MS
       ? this.currentGame
       : null
+    if (!game && session.requireKnownGame) {
+      this.deps.log('Client match: session ended without a known game, nothing queued')
+      return
+    }
     if (game) this.finishedGameIds.add(game.gameId)
     if (game && !game.isCounted) {
       this.finish({ gameId: game.gameId, queueName: game.queueName, placement: null, kind: 'not_counted', fulfilledLocationIds: [] })
@@ -404,8 +507,8 @@ export class ClientMatchTracker {
 
   // crash/reconnect into the same match keeps the frozen rule state
   takeReconnectSession(): PendingClientMatch | null {
-    const game = this.currentGame
-    if (!game || !this.phase || !IN_GAME_PHASES.has(this.phase)) return null
+    const game = this.getActiveGame()
+    if (!game) return null
     const index = this.pending.findIndex(entry => entry.gameId === game.gameId)
     if (index < 0) return null
     const [entry] = this.pending.splice(index, 1)
@@ -422,11 +525,14 @@ export class ClientMatchTracker {
     return 'waiting_for_result'
   }
 
+  private isInGame(): boolean {
+    if (this.currentGame === null) return false
+    const isLogInGame = this.isLogGameActive && this.isGameProcessRunning
+    return isLogInGame || (this.connected && this.phase !== null && IN_GAME_PHASES.has(this.phase))
+  }
+
   private isStillInGame(entry: PendingClientMatch): boolean {
-    return entry.gameId !== null
-      && this.currentGame?.gameId === entry.gameId
-      && this.phase !== null
-      && IN_GAME_PHASES.has(this.phase)
+    return entry.gameId !== null && this.currentGame?.gameId === entry.gameId && this.isInGame()
   }
 
   private async poll(): Promise<void> {
@@ -450,15 +556,15 @@ export class ClientMatchTracker {
 
     if (connected !== this.connected) {
       this.deps.log(connected ? 'Client match: Riot client connected' : 'Client match: Riot client not reachable')
-      if (!connected) this.puuid = null
+      if (!connected) this.clientPuuid = null
     }
     if (connected && phase !== this.phase) this.deps.log('Client match: gameflow phase', { phase })
     this.connected = connected
     this.phase = phase
 
-    if (connected && this.puuid === null) {
+    if (connected && this.clientPuuid === null) {
       const summoner = await this.deps.get('/lol-summoner/v1/current-summoner')
-      this.puuid = summoner?.status === 200 && isRecord(summoner.data) ? readString(summoner.data['puuid']) : null
+      this.clientPuuid = summoner?.status === 200 && isRecord(summoner.data) ? readString(summoner.data['puuid']) : null
     }
 
     if (connected && phase !== null && IN_GAME_PHASES.has(phase)) {
@@ -480,7 +586,7 @@ export class ClientMatchTracker {
   }
 
   private async processPending(): Promise<void> {
-    if (this.unparsedEndOfGameStats !== null && this.puuid !== null) {
+    if (this.unparsedEndOfGameStats !== null && this.getPuuid() !== null) {
       const stats = this.unparsedEndOfGameStats
       this.unparsedEndOfGameStats = null
       this.handleEndOfGameStats(stats)
@@ -522,11 +628,12 @@ export class ClientMatchTracker {
         continue
       }
 
-      if (!this.connected || this.puuid === null || !isResultPollDue) continue
+      const puuid = this.clientPuuid
+      if (!this.connected || puuid === null || !isResultPollDue) continue
 
       if (entry.placement === null) {
         const stats = await this.deps.get('/lol-end-of-game/v1/tft-eog-stats')
-        const endOfGame = stats?.status === 200 ? readEndOfGamePlacement(stats.data, this.puuid) : null
+        const endOfGame = stats?.status === 200 ? readEndOfGamePlacement(stats.data, puuid) : null
         if (endOfGame && (entry.gameId === null || endOfGame.gameId === null || endOfGame.gameId === entry.gameId)) {
           entry.placement = endOfGame.placement
           changed = true
@@ -535,8 +642,8 @@ export class ClientMatchTracker {
       }
 
       // minors need the final board for any placement, so always wait for history
-      const history = await this.deps.get(`/lol-match-history/v1/products/tft/${this.puuid}/matches?begin=0&count=${HISTORY_PAGE_SIZE}`)
-      const result = history?.status === 200 ? findMatchHistoryResult(history.data, this.puuid, entry) : null
+      const history = await this.deps.get(`/lol-match-history/v1/products/tft/${puuid}/matches?begin=0&count=${HISTORY_PAGE_SIZE}`)
+      const result = history?.status === 200 ? findMatchHistoryResult(history.data, puuid, entry) : null
       if (!result) continue
 
       entry.result = result

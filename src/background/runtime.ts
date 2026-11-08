@@ -14,7 +14,7 @@ function requirePlatform(): Platform {
 export const platform = requirePlatform()
 export const client = new Client()
 
-// Electron: match start, placement and final board from the Riot client's local API
+// Electron: match identity, placement and final board from the TFT client files or the Riot client's local API
 export const clientMatchTracker = platform.kind === 'electron'
   ? new ClientMatchTracker({
     get: apiPath => platform.clientApiGet(apiPath),
@@ -25,7 +25,7 @@ export const clientMatchTracker = platform.kind === 'electron'
     deliverResult: (pending, result) => deliverClientMatchResult(pending, result),
     onStatusChanged: () => {
       broadcastState()
-      // The board file can arrive before the Riot client reports the running game
+      // The board file can arrive before the running game is known
       evaluateLiveBoard('Riot client status')
     },
   })
