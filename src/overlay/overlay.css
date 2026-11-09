@@ -160,12 +160,7 @@ body {
   font-size: 13px;
   color: #fff;
   padding: 8px 14px 9px;
-  /* Only the left edge takes the accent color from the border-l-* utility */
-  border-style: solid;
-  border-width: 2px 2px 2px 6px;
-  border-top-color: var(--af-ink);
-  border-right-color: var(--af-ink);
-  border-bottom-color: var(--af-ink);
+  border: 2px solid var(--af-ink);
   border-radius: 12px;
   background: rgba(17, 17, 17, 0.94);
   box-shadow: var(--af-shadow-offset) var(--af-shadow-offset) 0 var(--af-red);

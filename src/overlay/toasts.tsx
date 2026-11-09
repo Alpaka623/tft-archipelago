@@ -9,7 +9,6 @@ type NewToast =
 export type Toast = NewToast & { toastId: string }
 
 interface ToastStyle {
-  borderClassName: string
   titleClassName: string
   title: string
 }
@@ -21,7 +20,6 @@ const MAX_CHECK_TOAST_ROWS = 3
 function getToastStyle(toast: Toast): ToastStyle {
   if (toast.kind === 'item') {
     return {
-      borderClassName: 'border-l-af-yellow',
       titleClassName: 'text-af-yellow',
       title: 'Item Received',
     }
@@ -29,12 +27,10 @@ function getToastStyle(toast: Toast): ToastStyle {
 
   return toast.status === 'sent'
     ? {
-      borderClassName: 'border-l-af-cyan',
       titleClassName: 'text-af-cyan',
       title: toast.checks.length === 1 ? 'Check Sent' : 'Checks Sent',
     }
     : {
-      borderClassName: 'border-l-white',
       titleClassName: 'text-white',
       title: toast.checks.length === 1 ? 'Check Queued' : 'Checks Queued',
     }
@@ -60,7 +56,7 @@ function ToastItem({ toast }: { toast: Toast }) {
 
   if (toast.kind === 'item') {
     return (
-      <div className={`toast-card ${style.borderClassName}`}>
+      <div className="toast-card">
         <div className={`${style.titleClassName} toast-title`}>{style.title}</div>
         <div className="mt-0.5 break-words leading-snug">
           <span className="font-semibold">{toast.itemName}</span>
@@ -74,7 +70,7 @@ function ToastItem({ toast }: { toast: Toast }) {
   const moreCount = Math.max(0, toast.checks.length - visibleChecks.length)
 
   return (
-    <div className={`toast-card ${style.borderClassName}`}>
+    <div className="toast-card">
       <div className="flex items-baseline justify-between gap-3">
         <span className={`${style.titleClassName} toast-title`}>{style.title}</span>
         {toast.status === 'queued' && (
