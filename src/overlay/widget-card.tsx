@@ -76,7 +76,8 @@ export function WidgetCard({ windowId, windowName, children }: WidgetCardProps) 
     restoreWidgetLayout(windowId, windowName, setScale)
   }, [windowId, windowName])
 
-  // offsetWidth/offsetHeight ignore the CSS transform, so this is the unscaled card size
+  // offsetWidth/offsetHeight ignore the CSS transform, so this is the unscaled card size (including
+  // the frame padding that keeps the hard offset shadow inside the window)
   React.useEffect(() => {
     const element = contentRef.current
     if (!element) return undefined
@@ -132,23 +133,25 @@ export function WidgetCard({ windowId, windowName, children }: WidgetCardProps) 
 
   return (
     <div className="absolute left-0 top-0" style={{ transform: `scale(${scale})`, transformOrigin: '0 0' }}>
-      <div ref={contentRef} className="widget-card" data-active={isActive}>
-        <div
-          className="widget-grip"
-          data-active={dragMode === 'move'}
-          title="Drag to move"
-          onPointerDown={startDrag('move')}
-        >
-          <GripDots />
-        </div>
-        {children}
-        <div
-          className="widget-scale-grip"
-          data-active={dragMode === 'scale'}
-          title="Drag to resize"
-          onPointerDown={startDrag('scale')}
-        >
-          <ScaleGripIcon />
+      <div ref={contentRef} className="widget-frame">
+        <div className="widget-card" data-active={isActive}>
+          <div
+            className="widget-grip"
+            data-active={dragMode === 'move'}
+            title="Drag to move"
+            onPointerDown={startDrag('move')}
+          >
+            <GripDots />
+          </div>
+          {children}
+          <div
+            className="widget-scale-grip"
+            data-active={dragMode === 'scale'}
+            title="Drag to resize"
+            onPointerDown={startDrag('scale')}
+          >
+            <ScaleGripIcon />
+          </div>
         </div>
       </div>
     </div>

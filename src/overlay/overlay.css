@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Austrian Force for UNICEF look: black cards with a hard offset shadow, yellow accents,
+   Bebas Neue for headings and Poppins for text */
+:root {
+  --af-red: #c42525;
+  --af-ink: #111111;
+  --af-yellow: #ffe14d;
+  --af-cyan: #1cabe2;
+  --af-track: #303030;
+  --af-muted: rgba(255, 255, 255, 0.72);
+  --af-shadow-offset: 5px;
+}
+
 html, body, #root {
   background: transparent;
   margin: 0;
@@ -13,26 +25,31 @@ html, body, #root {
 
 body {
   pointer-events: none;
+  font-family: Poppins, 'Segoe UI', system-ui, sans-serif;
 }
 
-/* Blitz-style widget cards: dark and readable when idle, opaque with grips on hover */
+/* The widget window is sized to this frame, so it leaves room for the offset shadow */
+.widget-frame {
+  padding: 0 var(--af-shadow-offset) var(--af-shadow-offset) 0;
+}
+
+/* Widget cards: black with a hard red shadow, brighter edge on hover */
 .widget-card {
   position: relative;
   pointer-events: auto;
-  font-family: 'Inter Variable', Inter, ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
-  padding: 10px 14px 12px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  background: rgba(14, 14, 17, 0.82);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  font-family: Poppins, 'Segoe UI', system-ui, sans-serif;
+  padding: 10px 16px 12px 22px;
+  border: 2px solid var(--af-ink);
+  border-radius: 14px;
+  background: rgba(17, 17, 17, 0.9);
+  box-shadow: var(--af-shadow-offset) var(--af-shadow-offset) 0 var(--af-red);
   transition: background-color 150ms ease, border-color 150ms ease;
 }
 
 .widget-card:hover,
 .widget-card[data-active='true'] {
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(30, 30, 35, 0.97);
+  border-color: var(--af-yellow);
+  background: var(--af-ink);
 }
 
 .widget-grip,
@@ -53,11 +70,11 @@ body {
   top: 0;
   bottom: 0;
   left: 0;
-  width: 13px;
+  width: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 7px 0 0 7px;
+  border-radius: 12px 0 0 12px;
   cursor: grab;
 }
 
@@ -67,13 +84,13 @@ body {
 
 .widget-grip:hover,
 .widget-grip[data-active='true'] {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 225, 77, 0.18);
 }
 
 .widget-grip-dots {
   width: 6px;
   height: 22px;
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.6) 1px, transparent 1.4px);
+  background-image: radial-gradient(circle, var(--af-yellow) 1px, transparent 1.4px);
   background-size: 3px 4px;
 }
 
@@ -85,30 +102,83 @@ body {
   justify-content: center;
   width: 14px;
   height: 14px;
-  border-radius: 0 0 7px 0;
-  color: rgba(255, 255, 255, 0.55);
+  border-radius: 0 0 12px 0;
+  color: var(--af-muted);
   cursor: nwse-resize;
 }
 
 .widget-scale-grip:hover,
 .widget-scale-grip[data-active='true'] {
+  color: var(--af-yellow);
+  background: rgba(255, 225, 77, 0.18);
+}
+
+/* Heading in a widget: Bebas Neue in yellow */
+.af-heading {
+  font-family: 'Bebas Neue', Impact, sans-serif;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  color: var(--af-yellow);
+}
+
+/* Small buttons with a hard shadow, pressed on click */
+.af-button {
+  pointer-events: auto;
+  border: 2px solid var(--af-ink);
+  border-radius: 8px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #fff;
+  color: var(--af-ink);
+  box-shadow: 3px 3px 0 var(--af-red);
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+
+.af-button:hover {
+  border-color: var(--af-yellow);
+}
+
+.af-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--af-red);
+}
+
+.af-button[data-tone='yellow'] {
+  background: var(--af-yellow);
+}
+
+.af-button[data-tone='ink'] {
+  background: var(--af-ink);
   color: #fff;
-  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--af-yellow);
 }
 
 .toast-card {
-  font-family: 'Inter Variable', Inter, ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  font-family: Poppins, 'Segoe UI', system-ui, sans-serif;
   font-size: 13px;
   color: #fff;
-  padding: 7px 12px 8px;
-  /* Only the left edge takes the accent color from the border-l-* utility */
-  border-style: solid;
-  border-width: 1px 1px 1px 3px;
-  border-top-color: rgba(255, 255, 255, 0.1);
-  border-right-color: rgba(255, 255, 255, 0.1);
-  border-bottom-color: rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  background: rgba(14, 14, 17, 0.9);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  padding: 8px 14px 9px;
+  border: 2px solid var(--af-ink);
+  border-radius: 12px;
+  background: rgba(17, 17, 17, 0.94);
+  box-shadow: var(--af-shadow-offset) var(--af-shadow-offset) 0 var(--af-red);
+  animation: af-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.toast-title {
+  font-family: 'Bebas Neue', Impact, sans-serif;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 0.5px;
+}
+
+@keyframes af-pop {
+  from { opacity: 0; transform: translateY(-16px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-card { animation: none; }
 }

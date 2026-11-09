@@ -2,7 +2,10 @@
 // toasts), the controls widget and the pinned checks widget.
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import '@fontsource-variable/inter'
+import '@fontsource/bebas-neue/400.css'
+import '@fontsource/poppins/400.css'
+import '@fontsource/poppins/600.css'
+import '@fontsource/poppins/700.css'
 import { BACKGROUND_WINDOW_ID, platform } from '../platform'
 import { DEFAULT_APP_STATE } from '../shared/app-state'
 import type { AppState, WindowMessage } from '../types/state'
@@ -80,7 +83,7 @@ function Overlay() {
   const isWidgetWindow = windowName === OVERLAY_CONTROLS_WINDOW_NAME || windowName === OVERLAY_PINNED_WINDOW_NAME
 
   return (
-    <div className="pointer-events-none fixed inset-0 h-screen w-screen bg-transparent font-sans text-white">
+    <div className="pointer-events-none fixed inset-0 h-screen w-screen bg-transparent font-body text-white">
       {windowName === OVERLAY_CONTROLS_WINDOW_NAME && (
         <WidgetCard windowId={windowId} windowName={windowName}>
           <StatusWidget
