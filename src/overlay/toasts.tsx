@@ -21,21 +21,21 @@ const MAX_CHECK_TOAST_ROWS = 3
 function getToastStyle(toast: Toast): ToastStyle {
   if (toast.kind === 'item') {
     return {
-      borderClassName: 'border-l-emerald-400',
-      titleClassName: 'text-emerald-300',
+      borderClassName: 'border-l-af-yellow',
+      titleClassName: 'text-af-yellow',
       title: 'Item Received',
     }
   }
 
   return toast.status === 'sent'
     ? {
-      borderClassName: 'border-l-sky-400',
-      titleClassName: 'text-sky-300',
+      borderClassName: 'border-l-af-cyan',
+      titleClassName: 'text-af-cyan',
       title: toast.checks.length === 1 ? 'Check Sent' : 'Checks Sent',
     }
     : {
-      borderClassName: 'border-l-amber-400',
-      titleClassName: 'text-amber-300',
+      borderClassName: 'border-l-white',
+      titleClassName: 'text-white',
       title: toast.checks.length === 1 ? 'Check Queued' : 'Checks Queued',
     }
 }
@@ -49,7 +49,7 @@ function ToastRewardLine({ locationName, itemName, playerName }: {
     <li className="leading-snug">
       <span className="font-semibold text-white">{locationName}</span>
       {itemName && playerName && (
-        <span className="text-zinc-400"> → {itemName} for {playerName}</span>
+        <span className="text-white/60"> → {itemName} for {playerName}</span>
       )}
     </li>
   )
@@ -61,10 +61,10 @@ function ToastItem({ toast }: { toast: Toast }) {
   if (toast.kind === 'item') {
     return (
       <div className={`toast-card ${style.borderClassName}`}>
-        <div className={`${style.titleClassName} text-[11px] font-black uppercase tracking-wide`}>{style.title}</div>
+        <div className={`${style.titleClassName} toast-title`}>{style.title}</div>
         <div className="mt-0.5 break-words leading-snug">
           <span className="font-semibold">{toast.itemName}</span>
-          <span className="text-zinc-400"> from {toast.playerName}</span>
+          <span className="text-white/60"> from {toast.playerName}</span>
         </div>
       </div>
     )
@@ -76,9 +76,9 @@ function ToastItem({ toast }: { toast: Toast }) {
   return (
     <div className={`toast-card ${style.borderClassName}`}>
       <div className="flex items-baseline justify-between gap-3">
-        <span className={`${style.titleClassName} text-[11px] font-black uppercase tracking-wide`}>{style.title}</span>
+        <span className={`${style.titleClassName} toast-title`}>{style.title}</span>
         {toast.status === 'queued' && (
-          <span className="text-[11px] text-zinc-400">sends after reconnect</span>
+          <span className="text-[11px] text-white/60">sends after reconnect</span>
         )}
       </div>
       <ul className="mt-0.5 space-y-0.5 break-words">
@@ -91,7 +91,7 @@ function ToastItem({ toast }: { toast: Toast }) {
           />
         ))}
         {moreCount > 0 && (
-          <li className="text-xs text-zinc-400">+ {moreCount} more</li>
+          <li className="text-xs text-white/60">+ {moreCount} more</li>
         )}
       </ul>
     </div>

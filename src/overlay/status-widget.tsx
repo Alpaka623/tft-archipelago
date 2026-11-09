@@ -27,10 +27,10 @@ const CONNECTION_LABELS: Record<AppState['connectionStatus'], string> = {
 }
 
 const CONNECTION_CLASS_NAMES: Record<AppState['connectionStatus'], string> = {
-  connected: 'text-emerald-300',
-  connecting: 'text-amber-300',
-  error: 'text-red-300',
-  disconnected: 'text-red-300',
+  connected: 'bg-emerald-400 text-af-ink',
+  connecting: 'bg-af-yellow text-af-ink',
+  error: 'bg-af-red text-white',
+  disconnected: 'bg-af-red text-white',
 }
 
 const SAVE_STATUS_TEXT: Record<SaveStatus, string> = {
@@ -47,14 +47,14 @@ function BonusItemsSummary({ state }: { state: AppState }) {
   if (stock.length === 0 && traps.length === 0) return null
 
   return (
-    <div className="mt-2 border-t border-white/10 pt-2 text-xs">
+    <div className="mt-2 border-t-2 border-af-track pt-2 text-xs">
       {stock.length > 0 && (
-        <div className="text-emerald-200">
+        <div className="text-af-yellow">
           Bonus: {stock.map(([kind, count]) => `${count}× ${BONUS_LABELS[kind] ?? kind}`).join(' · ')}
         </div>
       )}
       {traps.map(([kind]) => (
-        <div key={kind} className="font-semibold text-amber-300">Trap: {TRAP_LABELS[kind] ?? kind}</div>
+        <div key={kind} className="font-semibold text-red-300">Trap: {TRAP_LABELS[kind] ?? kind}</div>
       ))}
     </div>
   )
@@ -63,8 +63,8 @@ function BonusItemsSummary({ state }: { state: AppState }) {
 function UsageRow({ label, used, allowed, className = '' }: { label: string; used: number; allowed: number; className?: string }) {
   return (
     <div className={`flex items-center justify-between gap-5 ${className}`}>
-      <span className="text-zinc-300">{label}</span>
-      <span className="font-semibold">
+      <span className="text-white/70">{label}</span>
+      <span className="font-display text-lg leading-none">
         {used} / {formatLimit(allowed)}
       </span>
     </div>
@@ -89,10 +89,10 @@ export function StatusWidget({
   const statusText = SAVE_STATUS_TEXT[saveStatus]
 
   return (
-    <div className="min-w-60 text-sm text-zinc-100">
-      <div className="mb-3 flex items-center justify-between gap-5 border-b border-white/10 pb-2">
-        <span className="font-semibold text-zinc-200">AP Server</span>
-        <span className={`${CONNECTION_CLASS_NAMES[state.connectionStatus]} font-black uppercase`}>
+    <div className="min-w-60 font-body text-sm text-white">
+      <div className="mb-3 flex items-center justify-between gap-5 border-b-2 border-af-track pb-2">
+        <span className="af-heading">AP Server</span>
+        <span className={`${CONNECTION_CLASS_NAMES[state.connectionStatus]} rounded-md px-2 pt-0.5 font-display text-base leading-tight tracking-wide`}>
           {CONNECTION_LABELS[state.connectionStatus]}
         </span>
       </div>
@@ -109,7 +109,7 @@ export function StatusWidget({
       <BonusItemsSummary state={state} />
       <div className="mt-3 flex items-center gap-2">
         <button
-          className="pointer-events-auto border border-white/20 bg-white/10 px-2 py-1 text-xs font-semibold text-white hover:bg-white/18"
+          className="af-button"
           type="button"
           onClick={onToggleCalibration}
         >
@@ -118,14 +118,16 @@ export function StatusWidget({
         {calibrationMode && (
           <>
             <button
-              className="pointer-events-auto border border-emerald-300/50 bg-emerald-500/20 px-2 py-1 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/30"
+              className="af-button"
+              data-tone="yellow"
               type="button"
               onClick={onSave}
             >
               Save
             </button>
             <button
-              className="pointer-events-auto border border-amber-300/50 bg-amber-500/20 px-2 py-1 text-xs font-semibold text-amber-100 hover:bg-amber-500/30"
+              className="af-button"
+              data-tone="ink"
               type="button"
               onClick={onReset}
             >
@@ -135,7 +137,7 @@ export function StatusWidget({
         )}
       </div>
       {statusText && (
-        <div className="mt-2 text-xs text-zinc-300">
+        <div className="mt-2 text-xs text-white/70">
           {statusText}
         </div>
       )}
