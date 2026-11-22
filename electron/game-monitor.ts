@@ -31,6 +31,8 @@ const VK_RBUTTON = 0x02
 const KEY_DOWN_BIT = 0x8000
 const PROCESS_NAME_CACHE_RESET_MS = 60_000
 const MAX_TITLE_LENGTH = 512
+const MIN_GAME_WINDOW_WIDTH = 320
+const MIN_GAME_WINDOW_HEIGHT = 240
 
 const user32 = koffi.load('user32.dll')
 const kernel32 = koffi.load('kernel32.dll')
@@ -201,7 +203,10 @@ export class GameMonitor {
 
   private findGameWindow(): Hwnd | null {
     if (this.gameWindow && IsWindow(this.gameWindow) && IsWindowVisible(this.gameWindow)) {
-      return this.gameWindow
+      const rect = getWindowRect(this.gameWindow)
+      if (rect && rect.width >= MIN_GAME_WINDOW_WIDTH && rect.height >= MIN_GAME_WINDOW_HEIGHT) {
+        return this.gameWindow
+      }
     }
 
     this.gameWindow = null

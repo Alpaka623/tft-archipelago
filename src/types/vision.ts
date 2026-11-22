@@ -121,6 +121,8 @@ export interface VisionActionResult {
   message: string
 }
 
+export type VisionMatchState = 'unknown' | 'menu' | 'in_match'
+
 export type VisionCommand =
   | { id: 'VISION_DEBUG_SUBSCRIBE'; content: { enabled: boolean } }
   | { id: 'VISION_SAVE_SAMPLES'; content: Record<string, never> }
@@ -131,6 +133,8 @@ export type VisionCommand =
   | { id: 'VISION_RUN_ALIGNMENT'; content: Record<string, never> }
   // Rule violation evidence: saves the current frame and region crops into the folder
   | { id: 'VISION_SAVE_EVIDENCE'; content: { folder: string } }
+  // Standalone TFT client: pause alignment and HUD reads while TFT sits in its menu
+  | { id: 'VISION_MATCH_STATE'; content: { matchState: VisionMatchState } }
 
 export type VisionEvent =
   | { id: 'VISION_DEBUG_UPDATE'; content: VisionDebugUpdate }

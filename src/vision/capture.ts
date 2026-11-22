@@ -43,10 +43,21 @@ export class FrameCapture {
   setGameRunning(isRunning: boolean): void {
     this.isGameRunning = isRunning
     if (isRunning) {
-      void this.start()
+      if (this.status.capturing) void this.ensureCurrentSource()
+      else void this.start()
     } else if (this.status.capturing) {
       this.stop('game not running')
     }
+  }
+
+  // Standalone TFT or fullscreen toggles can switch the game HWND while the process keeps running
+  async ensureCurrentSource(): Promise<void> {
+    if (!this.isGameRunning || this.isStarting || !this.status.capturing) return
+    const nextSourceId = await this.platform.getCaptureSourceId()
+    if (!nextSourceId || nextSourceId === this.status.sourceId) return
+    console.log('Vision capture source changed, restarting', { previous: this.status.sourceId, next: nextSourceId })
+    this.stop('capture source changed')
+    void this.start()
   }
 
   private setLatestFrame(frame: FrameSource): void {

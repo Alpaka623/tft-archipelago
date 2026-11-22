@@ -15,18 +15,23 @@ import { consumePendingShopRerollCandidates } from './shop'
 const XP_PRICE = 4
 const GOLD_ONLY_XP_FALLBACK_DELAY_MS = 1000
 const SHOP_PURCHASE_XP_FALLBACK_SUPPRESSION_MS = 1000
+const XP_SIGNAL_PAIR_WINDOW_MS = 1500
+// Cap unconfirmed gold-only bursts (4/8/12 gold) so an OCR glitch never counts as a huge XP spree
+const MAX_GOLD_ONLY_FALLBACK_BUYS = 3
 
 interface GoldOnlyXpFallbackCandidate {
   id: number
   previousGold: number
   nextGold: number
   previousXp: XpSnapshot | null
+  buyCount: number
   createdAt: number
   timeoutId: number
 }
 
-let pendingGoldDropForXp: { previousXp: XpSnapshot | null } | null = null
-let pendingXpGainForGold: { previousGold: number | null } | null = null
+// Fast XP clicks can merge into 8/12/16 gold drops and +8/+12/+16 XP jumps across 1-2 frames
+let pendingGoldDrop: { amount: number; previousXp: XpSnapshot | null; updatedAt: number } | null = null
+let pendingXpGain: { buys: number | null; updatedAt: number } | null = null
 let goldOnlyFallbacks: GoldOnlyXpFallbackCandidate[] = []
 let nextFallbackId = 1
 // A 4-cost champion bought right before looks exactly like an XP purchase's gold drop, and so do
@@ -40,10 +45,41 @@ function getPhaseLabel(): 'planning' | 'non_planning' {
   return round.isInPlanningPhase ? 'planning' : 'non_planning'
 }
 
+function expireStalePendingSignals(now: number): void {
+  if (pendingGoldDrop && now - pendingGoldDrop.updatedAt > XP_SIGNAL_PAIR_WINDOW_MS) {
+    pendingGoldDrop = null
+  }
+  if (pendingXpGain && now - pendingXpGain.updatedAt > XP_SIGNAL_PAIR_WINDOW_MS) {
+    pendingXpGain = null
+  }
+}
+
+// Exact XP gained when staying on the same level or crossing a single known level cap; null when
+// the level jumped further or xp_max is missing
+function computeXpGain(current: XpSnapshot, previous: XpSnapshot | null): number | null {
+  if (!previous || current.level < previous.level) return null
+  if (current.level === previous.level) {
+    return current.current_xp > previous.current_xp ? current.current_xp - previous.current_xp : 0
+  }
+  if (current.level === previous.level + 1 && previous.xp_max !== undefined && previous.xp_max > 0) {
+    return Math.max(0, previous.xp_max - previous.current_xp) + current.current_xp
+  }
+  return null
+}
+
+function getXpBuyDelta(current: XpSnapshot | null, previous: XpSnapshot | null): { increased: boolean; exactBuys: number | null } {
+  if (!current || !hasXpIncreased(current, previous)) return { increased: false, exactBuys: 0 }
+  const gain = computeXpGain(current, previous)
+  if (gain === null) return { increased: true, exactBuys: null }
+  const buys = Math.floor(gain / XP_PRICE)
+  // Passive +2 round XP is smaller than a 4-XP purchase
+  return buys > 0 ? { increased: true, exactBuys: buys } : { increased: false, exactBuys: 0 }
+}
+
 // Battle start: half-seen XP purchases from planning do not carry over
 export function clearPendingXpSignals(): void {
-  pendingGoldDropForXp = null
-  pendingXpGainForGold = null
+  pendingGoldDrop = null
+  pendingXpGain = null
 }
 
 export function resetXpDetection(reason: string): void {
@@ -63,7 +99,7 @@ function isXpReadableAndUnchanged(previousXp: XpSnapshot | null): boolean {
   return latestXpReading !== undefined
     && latestXpReading !== null
     && previousXp !== null
-    && !hasXpIncreased(latestXpReading, previousXp)
+    && !getXpBuyDelta(latestXpReading, previousXp).increased
 }
 
 function clearGoldOnlyXpFallbacks(reason: string): void {
@@ -80,25 +116,40 @@ function clearGoldOnlyXpFallbacks(reason: string): void {
   goldOnlyFallbacks = []
 }
 
-function cancelOldestGoldOnlyXpFallback(reason: string): void {
-  const candidate = goldOnlyFallbacks.shift()
-  if (!candidate) return
-
-  window.clearTimeout(candidate.timeoutId)
-  logGep('GEP XP gold-only fallback canceled', {
-    reason,
-    id: candidate.id,
-    previousGold: candidate.previousGold,
-    nextGold: candidate.nextGold,
-  })
+function cancelGoldOnlyXpFallbacks(reason: string, buyCount = 1): void {
+  let remaining = buyCount
+  while (remaining > 0 && goldOnlyFallbacks.length > 0) {
+    const candidate = goldOnlyFallbacks[0]
+    if (candidate.buyCount <= remaining) {
+      goldOnlyFallbacks.shift()
+      window.clearTimeout(candidate.timeoutId)
+      remaining -= candidate.buyCount
+      logGep('GEP XP gold-only fallback canceled', {
+        reason,
+        id: candidate.id,
+        previousGold: candidate.previousGold,
+        nextGold: candidate.nextGold,
+        buyCount: candidate.buyCount,
+      })
+    } else {
+      candidate.buyCount -= remaining
+      logGep('GEP XP gold-only fallback reduced', {
+        reason,
+        id: candidate.id,
+        remainingBuyCount: candidate.buyCount,
+      })
+      remaining = 0
+    }
+  }
 }
 
-export function registerXpBuy(reason = 'confirmed_xp_delta', cancelPendingFallback = true): void {
-  economy.xpBuysThisRound += 1
-  clearPendingXpSignals()
-  if (cancelPendingFallback) cancelOldestGoldOnlyXpFallback(reason)
+export function registerXpBuy(reason = 'confirmed_xp_delta', cancelPendingFallback = true, count = 1): void {
+  if (count <= 0) return
+  economy.xpBuysThisRound += count
+  if (cancelPendingFallback) cancelGoldOnlyXpFallbacks(reason, count)
   logGep('GEP detection: XP purchase', {
     currentXpBuysThisRound: economy.xpBuysThisRound,
+    count,
     reason,
     isInPlanningPhase: round.isInPlanningPhase,
     phase: getPhaseLabel(),
@@ -120,7 +171,7 @@ function consumeRecentShopPurchase(goldDelta: number, now: number): boolean {
     recentShopPurchase = null
   }
 
-  return goldDelta === XP_PRICE
+  return goldDelta >= XP_PRICE && goldDelta % XP_PRICE === 0
 }
 
 // Purchases, rerolls and multi-slot purchases: any shop action that also spends gold
@@ -132,7 +183,7 @@ export function noteShopPurchaseForXpFallback(reason = 'nearby shop purchase'): 
   if (!candidate) return
 
   if (now - candidate.createdAt <= SHOP_PURCHASE_XP_FALLBACK_SUPPRESSION_MS) {
-    cancelOldestGoldOnlyXpFallback(reason)
+    cancelGoldOnlyXpFallbacks(reason, candidate.buyCount)
   }
 }
 
@@ -140,6 +191,7 @@ function scheduleGoldOnlyXpFallback(
   previousGold: number,
   nextGold: number,
   previousXp: XpSnapshot | null,
+  buyCount: number,
 ): void {
   const now = Date.now()
 
@@ -148,6 +200,7 @@ function scheduleGoldOnlyXpFallback(
       reason: 'nearby shop purchase',
       previousGold,
       nextGold,
+      buyCount,
       isInPlanningPhase: round.isInPlanningPhase,
       phase: getPhaseLabel(),
     })
@@ -162,7 +215,10 @@ function scheduleGoldOnlyXpFallback(
     if (index === -1) return
 
     const [candidate] = goldOnlyFallbacks.splice(index, 1)
-    pendingGoldDropForXp = null
+    if (pendingGoldDrop) {
+      pendingGoldDrop.amount = Math.max(0, pendingGoldDrop.amount - candidate.buyCount * XP_PRICE)
+      if (pendingGoldDrop.amount < XP_PRICE) pendingGoldDrop = null
+    }
     if (isXpReadableAndUnchanged(candidate.previousXp)) {
       logGep('GEP XP gold-only fallback skipped', {
         reason: 'XP readable and unchanged',
@@ -179,10 +235,11 @@ function scheduleGoldOnlyXpFallback(
       previousGold: candidate.previousGold,
       nextGold: candidate.nextGold,
       previousXp: candidate.previousXp,
+      buyCount: candidate.buyCount,
       isInPlanningPhase: round.isInPlanningPhase,
       phase: getPhaseLabel(),
     })
-    registerXpBuy('gold_only_four_gold_drop', false)
+    registerXpBuy('gold_only_four_gold_drop', false, candidate.buyCount)
   }, GOLD_ONLY_XP_FALLBACK_DELAY_MS)
 
   goldOnlyFallbacks.push({
@@ -190,6 +247,7 @@ function scheduleGoldOnlyXpFallback(
     previousGold,
     nextGold,
     previousXp,
+    buyCount,
     createdAt: now,
     timeoutId,
   })
@@ -199,10 +257,33 @@ function scheduleGoldOnlyXpFallback(
     previousGold,
     nextGold,
     previousXp,
+    buyCount,
     delayMs: GOLD_ONLY_XP_FALLBACK_DELAY_MS,
     isInPlanningPhase: round.isInPlanningPhase,
     phase: getPhaseLabel(),
   })
+}
+
+function pairPendingXpSignals(reason = 'confirmed_xp_delta'): number {
+  if (!pendingGoldDrop || !pendingXpGain) return 0
+
+  const goldBuys = Math.floor(pendingGoldDrop.amount / XP_PRICE)
+  if (goldBuys <= 0) return 0
+
+  const matchedBuys = pendingXpGain.buys === null ? goldBuys : Math.min(goldBuys, pendingXpGain.buys)
+  if (matchedBuys <= 0) return 0
+
+  pendingGoldDrop.amount -= matchedBuys * XP_PRICE
+  if (pendingGoldDrop.amount < XP_PRICE) pendingGoldDrop = null
+
+  if (pendingXpGain.buys === null || pendingXpGain.buys <= matchedBuys) {
+    pendingXpGain = null
+  } else {
+    pendingXpGain.buys -= matchedBuys
+  }
+
+  registerXpBuy(reason, true, matchedBuys)
+  return matchedBuys
 }
 
 // GEP-only probe; the Electron vision source reports XP directly
@@ -235,9 +316,13 @@ function probeXpFromGetInfo(reason: string): void {
       meKeys: isRecord(parsedMe) ? Object.keys(parsedMe) : [],
     })
 
-    if (probedXp && hasXpIncreased(probedXp, economy.xp)) {
+    const xpDelta = getXpBuyDelta(probedXp, economy.xp)
+    if (probedXp && xpDelta.increased) {
       economy.xp = probedXp
-      if (pendingGoldDropForXp) registerXpBuy()
+      if (pendingGoldDrop) {
+        pendingXpGain = { buys: xpDelta.exactBuys, updatedAt: Date.now() }
+        pairPendingXpSignals('confirmed_xp_probe')
+      }
     }
   })
 }
@@ -245,6 +330,8 @@ function probeXpFromGetInfo(reason: string): void {
 export function handleEconomyUpdate(nextGold: number | null, nextXp: XpSnapshot | null): void {
   const previousGold = economy.gold
   const previousXp = economy.xp
+  const now = Date.now()
+  expireStalePendingSignals(now)
 
   logGep('GEP economy snapshot', {
     isInPlanningPhase: round.isInPlanningPhase,
@@ -256,45 +343,53 @@ export function handleEconomyUpdate(nextGold: number | null, nextXp: XpSnapshot 
   })
 
   const goldDelta = nextGold !== null && previousGold !== null ? previousGold - nextGold : null
-  const goldDroppedByXpPrice = goldDelta === XP_PRICE
-  const xpIncreasedNow = nextXp !== null && hasXpIncreased(nextXp, previousXp)
+  const xpDelta = getXpBuyDelta(nextXp, previousXp)
 
   if (goldDelta !== null && goldDelta < 0) {
     consumePendingShopRerollCandidates('gold increased')
   }
 
-  if (goldDelta !== null && goldDelta > 0 && goldDelta !== XP_PRICE) {
-    consumeRecentShopPurchase(goldDelta, Date.now())
+  if (goldDelta !== null && goldDelta > 0 && goldDelta % XP_PRICE !== 0) {
+    consumeRecentShopPurchase(goldDelta, now)
   }
 
-  const goldBeforeXpGain = pendingXpGainForGold?.previousGold
-  if (goldDroppedByXpPrice && xpIncreasedNow) {
-    registerXpBuy()
-  } else if (
-    goldDroppedByXpPrice
-    && nextGold !== null
-    && goldBeforeXpGain !== null
-    && goldBeforeXpGain !== undefined
-    && goldBeforeXpGain - nextGold === XP_PRICE
-  ) {
-    registerXpBuy()
-  } else if (
-    xpIncreasedNow
-    && pendingGoldDropForXp
-    && nextXp !== null
-    && hasXpIncreased(nextXp, pendingGoldDropForXp.previousXp)
-  ) {
-    registerXpBuy()
-  } else {
-    if (goldDroppedByXpPrice) {
-      pendingGoldDropForXp = { previousXp }
-      if (previousGold !== null && nextGold !== null) {
-        scheduleGoldOnlyXpFallback(previousGold, nextGold, previousXp)
-      }
-      probeXpFromGetInfo('gold_dropped_by_four')
+  if (goldDelta !== null && goldDelta > 0) {
+    if (pendingGoldDrop) {
+      pendingGoldDrop.amount += goldDelta
+      pendingGoldDrop.updatedAt = now
+    } else {
+      pendingGoldDrop = { amount: goldDelta, previousXp, updatedAt: now }
     }
-    if (xpIncreasedNow) {
-      pendingXpGainForGold = { previousGold }
+  }
+
+  if (xpDelta.increased) {
+    if (pendingXpGain) {
+      pendingXpGain.buys = pendingXpGain.buys === null || xpDelta.exactBuys === null
+        ? null
+        : pendingXpGain.buys + xpDelta.exactBuys
+      pendingXpGain.updatedAt = now
+    } else {
+      pendingXpGain = { buys: xpDelta.exactBuys, updatedAt: now }
+    }
+  }
+
+  const matchedBuys = pairPendingXpSignals()
+  const unmatchedGoldThisUpdate = goldDelta !== null && goldDelta > 0
+    ? Math.max(0, goldDelta - matchedBuys * XP_PRICE)
+    : 0
+
+  if (
+    unmatchedGoldThisUpdate >= XP_PRICE
+    && unmatchedGoldThisUpdate % XP_PRICE === 0
+    && previousGold !== null
+    && nextGold !== null
+  ) {
+    const fallbackBuys = unmatchedGoldThisUpdate / XP_PRICE
+    if (fallbackBuys <= MAX_GOLD_ONLY_FALLBACK_BUYS) {
+      scheduleGoldOnlyXpFallback(previousGold, nextGold, previousXp, fallbackBuys)
+    }
+    if (unmatchedGoldThisUpdate === XP_PRICE) {
+      probeXpFromGetInfo('gold_dropped_by_four')
     }
   }
 

@@ -183,3 +183,52 @@ describe('resetXpDetection', () => {
     expect(state.economy.xpBuysThisRound).toBe(0)
   })
 })
+
+describe('fast and multi-click XP purchases', () => {
+  it('counts a merged double click (-8 gold, +8 XP) as two XP buys', () => {
+    detection.handleEconomyUpdate(20, { level: 5, current_xp: 2, xp_max: 20 })
+    detection.handleEconomyUpdate(12, { level: 5, current_xp: 10, xp_max: 20 })
+    vi.advanceTimersByTime(2000)
+
+    expect(state.economy.xpBuysThisRound).toBe(2)
+  })
+
+  it('counts a fast triple click split across separate gold and XP frames', () => {
+    detection.handleEconomyUpdate(30, { level: 5, current_xp: 2, xp_max: 20 })
+    detection.handleEconomyUpdate(22, null)
+    detection.handleEconomyUpdate(18, { level: 5, current_xp: 10, xp_max: 20 })
+    detection.handleEconomyUpdate(null, { level: 5, current_xp: 14, xp_max: 20 })
+    vi.advanceTimersByTime(2000)
+
+    expect(state.economy.xpBuysThisRound).toBe(3)
+  })
+
+  it('counts a fast double click across a level up', () => {
+    detection.handleEconomyUpdate(20, { level: 4, current_xp: 8, xp_max: 10 })
+    detection.handleEconomyUpdate(12, { level: 5, current_xp: 6, xp_max: 20 })
+    vi.advanceTimersByTime(2000)
+
+    expect(state.economy.xpBuysThisRound).toBe(2)
+  })
+
+  it('does not treat passive +2 round XP with a 4-cost buy as an XP purchase', () => {
+    const afterPassiveXp = { level: 4, current_xp: 4, xp_max: 10 }
+    detection.noteXpReading(afterPassiveXp)
+    detection.handleEconomyUpdate(16, afterPassiveXp)
+    vi.advanceTimersByTime(2000)
+
+    expect(state.economy.xpBuysThisRound).toBe(0)
+  })
+
+  it('confirms a merged 8 gold drop via fallback when XP is unreadable and suppresses it on shop activity', () => {
+    detection.noteXpReading(null)
+    detection.handleEconomyUpdate(12, null)
+    vi.advanceTimersByTime(1000)
+    expect(state.economy.xpBuysThisRound).toBe(2)
+
+    detection.noteShopPurchaseForXpFallback('nearby multi-slot purchase')
+    detection.handleEconomyUpdate(4, null)
+    vi.advanceTimersByTime(2000)
+    expect(state.economy.xpBuysThisRound).toBe(2)
+  })
+})

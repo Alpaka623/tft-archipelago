@@ -90,6 +90,7 @@ function Overlay() {
             onToggleCalibration={handleToggleCalibration}
             onSave={() => sendToBackground('SAVE_BLOCKER_CONFIG')}
             onReset={() => sendToBackground('RESET_BLOCKER_CONFIG')}
+            onUseFreeAugmentPick={() => sendToBackground('USE_FREE_AUGMENT_PICK')}
           />
         </WidgetCard>
       )}

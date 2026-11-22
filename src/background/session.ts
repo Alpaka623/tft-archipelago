@@ -2,6 +2,7 @@
 // match boundaries from the TFT client log. The standalone client (2026-11-03) keeps one process for menu,
 // lobby and every match, so a match ends when the log says so; a League-client launch still ends with the process.
 import type { GameState } from '../platform'
+import { VISION_WINDOW_ID } from '../types/vision'
 import { deriveState } from './app-state'
 import { evaluateLiveBoard, setLatestBoardStats, validateImmediateMinorChecks } from './archipelago/checks'
 import { broadcastState } from './broadcast'
@@ -22,6 +23,17 @@ import {
   openOverlayOncePerSession,
   updateGameResolution,
 } from './windows/overlay'
+
+export function syncVisionMatchState(): void {
+  if (platform.kind !== 'electron') return
+  platform.sendMessage(VISION_WINDOW_ID, 'VISION_MATCH_STATE', { matchState: session.matchState })
+}
+
+function setMatchState(next: typeof session.matchState): void {
+  if (session.matchState === next) return
+  session.matchState = next
+  syncVisionMatchState()
+}
 
 // Electron: placement and board arrive later from the TFT client files or the Riot client; freeze the rule state now
 function queueMatchResult(requireKnownGame = false): void {
@@ -56,7 +68,7 @@ function handleSessionEnd(reason: string): void {
     } else {
       logGep('TFT session ended in the client menu', { reason })
     }
-    session.matchState = 'unknown'
+    setMatchState('unknown')
     resetMatchDetectionState()
     broadcastState()
   } else if (session.isTftRunning) {
@@ -82,6 +94,7 @@ function handleSessionStart(reason: string): void {
   session.isTftRunning = true
   session.startedAt = Date.now()
   session.matchState = getInitialMatchState()
+  syncVisionMatchState()
   clientMatchTracker?.setGameProcessRunning(true)
   resetMatchDetectionState()
   logGep('TFT session started: detection state reset', { reason, matchState: session.matchState })
@@ -119,7 +132,7 @@ export function trackTftSession(): void {
 
 // A new match inside a running process (standalone client): start a fresh run
 function openMatch(at: string, reason: string): void {
-  session.matchState = 'in_match'
+  setMatchState('in_match')
   session.startedAt = parseTftLogTimestamp(at) ?? Date.now()
   resetMatchDetectionState()
   restoreReconnectSession()
@@ -143,7 +156,7 @@ function handleMatchLifecycleEvent(event: TftLogEvent, isReplay: boolean): void 
       if (!session.isTftRunning) break
       // 'unknown': a League-client launch starts the process for this match, keep the process-start state
       if (session.matchState === 'menu') openMatch(event.at, 'entered the match')
-      else session.matchState = 'in_match'
+      else setMatchState('in_match')
       break
     case 'match_end':
       if (session.isTftRunning && session.matchState !== 'menu' && !isReplay) {
@@ -152,7 +165,7 @@ function handleMatchLifecycleEvent(event: TftLogEvent, isReplay: boolean): void 
       }
       tracker.handleLogMatchEnd()
       if (session.isTftRunning) {
-        session.matchState = 'menu'
+        setMatchState('menu')
         resetMatchDetectionState()
         broadcastState()
       }
@@ -161,7 +174,7 @@ function handleMatchLifecycleEvent(event: TftLogEvent, isReplay: boolean): void 
       tracker.handleLogLobbyState(event.state)
       // the process started in the client menu: nothing that happened so far belongs to a match
       if (session.isTftRunning && session.matchState === 'unknown' && TFT_MENU_LOBBY_STATES.has(event.state)) {
-        session.matchState = 'menu'
+        setMatchState('menu')
         resetMatchDetectionState()
         broadcastState()
       }

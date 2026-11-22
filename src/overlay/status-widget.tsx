@@ -78,6 +78,7 @@ export function StatusWidget({
   onToggleCalibration,
   onSave,
   onReset,
+  onUseFreeAugmentPick,
 }: {
   state: AppState
   calibrationMode: boolean
@@ -85,8 +86,13 @@ export function StatusWidget({
   onToggleCalibration: () => void
   onSave: () => void
   onReset: () => void
+  onUseFreeAugmentPick: () => void
 }) {
   const statusText = SAVE_STATUS_TEXT[saveStatus]
+  const canUseFreeAugmentPick = state.isAugmentPhaseActive
+    && (!state.leftAugmentUnlocked || !state.rightAugmentUnlocked)
+    && !state.bonusItems.activeTraps.augmentLock
+    && state.bonusItems.stock.augmentPick > 0
 
   return (
     <div className="min-w-60 text-sm text-zinc-100">
@@ -105,6 +111,15 @@ export function StatusWidget({
           allowed={state.allowedAugmentRerolls}
           className="mt-2"
         />
+      )}
+      {canUseFreeAugmentPick && (
+        <button
+          className="pointer-events-auto mt-2.5 w-full rounded border border-emerald-300/50 bg-emerald-500/20 px-2.5 py-1.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/30"
+          type="button"
+          onClick={onUseFreeAugmentPick}
+        >
+          Use free augment pick ({state.bonusItems.stock.augmentPick} left)
+        </button>
       )}
       <BonusItemsSummary state={state} />
       <div className="mt-3 flex items-center gap-2">

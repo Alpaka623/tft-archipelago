@@ -4,7 +4,7 @@ import calibrationDefaultsData from '../data/vision-calibration-defaults.json'
 import regionsData from '../data/vision-regions.json'
 import type { Platform } from '../platform'
 import type { VisionTextRegion } from '../types/vision'
-import type { HudAlignment } from './alignment'
+import { ANCHOR_MIN_SCORE, type HudAlignment } from './alignment'
 import type { DigitTemplates } from './analysis'
 
 const CALIBRATION_PATH = 'TFTArchipelago/vision-calibration.json'
@@ -31,6 +31,29 @@ export function getBundledCalibration(): VisionCalibration {
   return structuredClone(calibrationDefaultsData as VisionCalibration)
 }
 
+// Merge bundled and user-saved glyph templates per character so upgrading the app never drops
+// newly bundled glyphs behind an older saved calibration file
+export function mergeDigitTemplates(
+  bundled: DigitTemplates | undefined,
+  saved: DigitTemplates | undefined,
+): DigitTemplates | undefined {
+  if (!bundled && !saved) return undefined
+  const merged: DigitTemplates = {}
+  const keys = new Set([...Object.keys(bundled ?? {}), ...Object.keys(saved ?? {})])
+  for (const key of keys) {
+    const seen = new Set<string>()
+    const unique: DigitTemplates[string] = []
+    for (const glyph of [...(bundled?.[key] ?? []), ...(saved?.[key] ?? [])]) {
+      const signature = glyph.join('')
+      if (seen.has(signature)) continue
+      seen.add(signature)
+      unique.push(glyph)
+    }
+    if (unique.length > 0) merged[key] = unique
+  }
+  return merged
+}
+
 export class CalibrationStore {
   private readonly calibration = getBundledCalibration()
 
@@ -42,7 +65,10 @@ export class CalibrationStore {
   }
 
   getCachedAlignment(profileKey: string): HudAlignment | null {
-    return this.calibration.profiles[profileKey]?.alignment ?? null
+    const alignment = this.calibration.profiles[profileKey]?.alignment ?? null
+    // Drop anchor-less alignments that older versions could save while TFT sat in the client menu
+    if (!alignment || !alignment.matches.some(match => match.score >= ANCHOR_MIN_SCORE)) return null
+    return alignment
   }
 
   // Glyph grids are size-normalized, so the reference profile's templates work at other resolutions
@@ -73,7 +99,13 @@ export class CalibrationStore {
       const parsed = JSON.parse(content) as VisionCalibration
       if (parsed.version !== 1 || typeof parsed.profiles !== 'object') return
       for (const [profileKey, profile] of Object.entries(parsed.profiles)) {
-        this.calibration.profiles[profileKey] = { ...this.calibration.profiles[profileKey], ...profile }
+        const bundled = this.calibration.profiles[profileKey]
+        this.calibration.profiles[profileKey] = {
+          ...bundled,
+          ...profile,
+          goldDigits: mergeDigitTemplates(bundled?.goldDigits, profile.goldDigits),
+          xpGlyphs: mergeDigitTemplates(bundled?.xpGlyphs, profile.xpGlyphs),
+        }
       }
     } catch (error) {
       console.warn('Failed to parse vision calibration:', error)

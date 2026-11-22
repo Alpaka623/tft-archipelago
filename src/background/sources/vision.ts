@@ -199,11 +199,11 @@ function keepsPendingPurchaseSlotEmpty(snapshot: string[], pendingSnapshot: stri
   return pendingSnapshot.every((entry, index) => entry === reference[index] || !isSold(entry) || isSold(snapshot[index]))
 }
 
-function isSinglePurchaseCandidate(snapshot: string[]): boolean {
+function isPurchaseCandidate(snapshot: string[]): boolean {
   const reference = lastDeliveredShopSnapshot ?? shop.baseline
   if (!reference) return false
   const changed = snapshot.map((entry, index) => ({ entry, index })).filter(({ entry, index }) => entry !== reference[index])
-  return changed.length === 1 && isSold(changed[0].entry)
+  return changed.length >= 1 && changed.every(({ entry, index }) => isSold(entry) && !isSold(reference[index] ?? ''))
 }
 
 function countNewlySoldSlots(snapshot: string[]): number {
@@ -231,7 +231,10 @@ function handleShopSnapshot(snapshot: string[]): void {
   }
   if (!countChangedShopSlots(snapshot, pendingShopSnapshot ?? lastDeliveredShopSnapshot)) return
 
-  if (isSinglePurchaseCandidate(snapshot)) {
+  if (isPurchaseCandidate(snapshot)) {
+    if (countNewlySoldSlots(snapshot) >= 2) {
+      noteShopPurchaseForXpFallback('nearby multi-slot purchase')
+    }
     pendingPurchase = { snapshot: [...snapshot], createdAt: Date.now() }
     resolvePendingPurchase()
     return
@@ -272,8 +275,13 @@ function handleShopSnapshot(snapshot: string[]): void {
 function handleEconomy(state: VisionGameState): void {
   let xp: XpSnapshot | null = null
   if (state.xp) {
-    // XP counter has no level, a bigger cap means we leveled
-    if (lastXpMax !== null && state.xp.max > lastXpMax) level++
+    // Prefer the monotonic HUD level read; fall back to cap growth when level is unreadable
+    const observedLevel = economy.level ?? state.level
+    if (observedLevel !== null && observedLevel > level) {
+      level = observedLevel
+    } else if (lastXpMax !== null && state.xp.max > lastXpMax) {
+      level++
+    }
     lastXpMax = state.xp.max
     xp = { level, current_xp: state.xp.current, xp_max: state.xp.max }
   }
@@ -470,7 +478,7 @@ function trySettleLayoutResync(state: VisionGameState): boolean {
 }
 
 export function handleVisionGameState(state: VisionGameState): void {
-  if (platform.kind === 'overwolf') return
+  if (platform.kind === 'overwolf' || session.matchState === 'menu') return
   latestGameState = state
 
   // level never drops mid-match, a lower read is a misread or the next game
@@ -510,6 +518,8 @@ export function handleVisionGameState(state: VisionGameState): void {
   } else if (state.shopVisible === false && shop.isVisible) {
     // a full change right before hiding is the shop sliding out (carousel, augments), so it
     // only syncs the baseline
+    pendingPurchase = null
+    pendingPurchaseTimeoutId = clearTimer(pendingPurchaseTimeoutId)
     handleShopVisibleUpdate(false)
     flushPendingShopSnapshot()
   } else if (state.shopVisible === true) {

@@ -8,6 +8,7 @@ import {
   type VisionCommand,
   type VisionDebugUpdate,
   type VisionGameState,
+  type VisionMatchState,
   type VisionRegionName,
   type VisionRegionResult,
   type VisionStatus,
@@ -107,6 +108,7 @@ let visionState: VisionGameState = createEmptyVisionState()
 let lastLayoutKey = ''
 let lastSentVisionStateKey = ''
 let lastVisionStateSentAt = 0
+let matchState: VisionMatchState = 'unknown'
 
 function createRegionStates(): Record<VisionRegionName, StableRegionState> {
   return Object.fromEntries(VISION_REGION_NAMES.map(name => [name, createRegionState()])) as Record<VisionRegionName, StableRegionState>
@@ -250,13 +252,16 @@ function updateAnalyzedFps(now: number): void {
 function analyzeLatestFrame(): void {
   if (!drawLatestFrame()) return
 
-  visionState = readGameState(analyzeRegions())
-
   const now = performance.now()
   updateAnalyzedFps(now)
-  sendVisionStateIfChanged(now)
-  aligner.sendToBackground()
-  aligner.maybeRealign(frameContext, visionState.shopVisible, now)
+
+  // Standalone TFT client: menu graphics must not trigger HUD alignment or match detections
+  if (matchState !== 'menu') {
+    visionState = readGameState(analyzeRegions())
+    sendVisionStateIfChanged(now)
+    aligner.sendToBackground()
+    aligner.maybeRealign(frameContext, visionState.shopVisible, now)
+  }
 
   if (isDebugSubscribed && now - lastDebugUpdateAt >= DEBUG_UPDATE_INTERVAL_MS) {
     lastDebugUpdateAt = now
@@ -411,11 +416,24 @@ async function handleCommand(command: VisionCommand): Promise<void> {
       sendActionResult(await resetCalibration())
       return
     case 'VISION_RUN_ALIGNMENT':
+      await capture.ensureCurrentSource()
       sendActionResult(await rerunAlignment())
       return
     case 'VISION_SAVE_EVIDENCE':
       await saveViolationEvidence(command.content.folder)
       return
+    case 'VISION_MATCH_STATE': {
+      const previous = matchState
+      matchState = command.content.matchState
+      if (matchState === 'menu') {
+        resetReadings()
+      } else if (previous === 'menu') {
+        resetReadings()
+        aligner.markUnverified()
+        void capture.ensureCurrentSource()
+      }
+      return
+    }
   }
 }
 
@@ -425,6 +443,7 @@ platform.onMessage((message) => {
 platform.onGameStateChanged(({ state }) => capture.setGameRunning(state.isRunning))
 
 void calibration.load().then(async () => {
+  platform.sendMessage(BACKGROUND_WINDOW_ID, 'VISION_READY', {})
   capture.setGameRunning((await platform.getRunningGame()).isRunning)
 })
 

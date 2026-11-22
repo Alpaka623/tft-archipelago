@@ -170,6 +170,7 @@ function showBlockerWindow(windowName: string, rect: BlockerRect): void {
       positionBlockerWindow(existingWindowId, windowName, rect)
       void platform.restoreWindow(existingWindowId)
       platform.bringToFront(existingWindowId, false)
+      sendWindowMessage(existingWindowId, buildBlockerOfferMessage(deriveState()))
     })
     return
   }
@@ -320,6 +321,12 @@ export function prewarmBlockerWindows(reason: string): void {
   for (const def of BLOCKER_DEFS) {
     prewarmBlockerWindow(def.windowName, reason)
   }
+}
+
+export function handleBlockerWindowMounted(windowId: string): void {
+  if (!windowId) return
+  sendWindowMessage(windowId, buildBlockerOfferMessage(deriveState()))
+  sendCalibrationMode(windowId, blockers.isCalibrationMode)
 }
 
 export function setBlockerCalibrationMode(enabled: boolean): void {

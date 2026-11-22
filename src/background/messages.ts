@@ -9,11 +9,12 @@ import { sendWindowMessage } from './broadcast'
 import { spendFreeAugmentPickFromBlocker } from './rules/bonus-usage'
 import { overrideViolation } from './rules/violations'
 import { client, platform } from './runtime'
-import { handleEndOfGameFile, handleTftLogBatch } from './session'
+import { handleEndOfGameFile, handleTftLogBatch, syncVisionMatchState } from './session'
 import { handleDebugGameEvent } from './sources/debug'
 import { handleVisionGameState, handleVisionLayoutChanged } from './sources/vision'
 import { windows } from './state'
 import {
+  handleBlockerWindowMounted,
   moveBlocker,
   resetBlockerProfile,
   saveBlockerConfig,
@@ -46,6 +47,9 @@ function handleMessage(id: string, content: Record<string, unknown>): void {
     case 'SET_BLOCKER_CALIBRATION_MODE':
       setBlockerCalibrationMode(content['enabled'] === true)
       break
+    case 'BLOCKER_MOUNTED':
+      handleBlockerWindowMounted(content['windowId'] as string)
+      break
     case 'USE_FREE_AUGMENT_PICK':
       spendFreeAugmentPickFromBlocker()
       break
@@ -74,6 +78,9 @@ function handleMessage(id: string, content: Record<string, unknown>): void {
       break
     case TFT_END_OF_GAME_MESSAGE_ID:
       handleEndOfGameFile(content as unknown as TftEndOfGameFile)
+      break
+    case 'VISION_READY':
+      syncVisionMatchState()
       break
     case 'VISION_LAYOUT_CHANGED':
       handleVisionLayoutChanged()

@@ -149,3 +149,46 @@ describe('merged 4 gold drops', () => {
     expect(state.economy.xpBuysThisRound).toBe(1)
   })
 })
+
+describe('fast XP buys and menu gating', () => {
+  it('uses the HUD level read to count a fast double XP buy across a level up', () => {
+    vision.handleVisionGameState({
+      ...frame(true, FIRST_SHOP),
+      gold: 20,
+      level: 4,
+      xp: { current: 8, max: 10 },
+    })
+    vision.handleVisionGameState({
+      ...frame(true, FIRST_SHOP),
+      gold: 12,
+      level: 5,
+      xp: { current: 6, max: 20 },
+    })
+    vi.advanceTimersByTime(2000)
+
+    expect(state.economy.xpBuysThisRound).toBe(2)
+  })
+
+  it('ignores vision frames while the standalone client is in its menu', () => {
+    state.session.matchState = 'menu'
+    vision.handleVisionGameState({
+      ...frame(true, SECOND_SHOP),
+      gold: 10,
+      xp: { current: 0, max: 6 },
+    })
+    vi.advanceTimersByTime(2000)
+
+    expect(state.shop.rerollsUsed).toBe(0)
+    expect(state.economy.gold).toBeNull()
+    expect(state.economy.xpBuysThisRound).toBe(0)
+  })
+
+  it('detects rapid two-slot purchases and keeps shop baseline synced for later buys', () => {
+    vision.handleVisionGameState({ ...frame(true, FIRST_SHOP), gold: 10 })
+    vision.handleVisionGameState({ ...frame(true, ['a1', 'b1', 'c1', 'Sold', 'Sold']), gold: 6 })
+    vi.advanceTimersByTime(600)
+
+    expect(state.shop.baseline).toEqual(['a1', 'b1', 'c1', 'Sold', 'Sold'])
+    expect(state.economy.xpBuysThisRound).toBe(0)
+  })
+})

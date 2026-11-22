@@ -195,21 +195,23 @@ function scheduleNonPlanningShopRerollCandidate(
   })
 }
 
-function handleShopPurchase(purchasedSlotIndex: number, snapshot: ShopSnapshot): void {
+function handleShopPurchases(purchasedSlotIndices: number[], snapshot: ShopSnapshot): void {
   shop.baseline = [...snapshot]
   noteShopPurchaseForXpFallback()
-  logGep('GEP detection: shop purchase', {
-    purchasedSlotIndex,
-    isInPlanningPhase: round.isInPlanningPhase,
-    phase: getPhaseLabel(),
-  })
-  const state = deriveState()
-  if (state.lockedShopSlots.includes(purchasedSlotIndex)) {
-    if (!bonus.activeTraps.shopLock && state.bonusItems.stock.shopSlotPass > 0) {
-      // Shop Slot Pass: covers exactly this one purchase
-      consumeBonusItem('shopSlotPass')
-    } else {
-      invalidateRun(`Purchased from locked shop slot ${purchasedSlotIndex}`)
+  for (const purchasedSlotIndex of purchasedSlotIndices) {
+    logGep('GEP detection: shop purchase', {
+      purchasedSlotIndex,
+      isInPlanningPhase: round.isInPlanningPhase,
+      phase: getPhaseLabel(),
+    })
+    const state = deriveState()
+    if (state.lockedShopSlots.includes(purchasedSlotIndex)) {
+      if (!bonus.activeTraps.shopLock && state.bonusItems.stock.shopSlotPass > 0) {
+        // Shop Slot Pass: covers exactly this one purchase
+        consumeBonusItem('shopSlotPass')
+      } else {
+        invalidateRun(`Purchased from locked shop slot ${purchasedSlotIndex}`)
+      }
     }
   }
   broadcastState()
@@ -294,8 +296,10 @@ export function handleShopUpdate(snapshot: ShopSnapshot): void {
     .filter(({ name, index }) => isSold(name) && !isSold(baseline[index] ?? ''))
     .map(({ index }) => index + 1)
 
-  if (soldSlots.length === 1) {
-    handleShopPurchase(soldSlots[0], snapshot)
+  const onlySoldSlotsChanged = soldSlots.length >= 1
+    && snapshot.every((name, index) => name === baseline[index] || isSold(name))
+  if (onlySoldSlotsChanged) {
+    handleShopPurchases(soldSlots, snapshot)
     return
   }
 

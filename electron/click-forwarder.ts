@@ -25,7 +25,7 @@ export class ClickForwarder {
   private hovered: ManagedWindow | null = null
   // window that got the forwarded mouseDown; receives moves and the mouseUp wherever the cursor is
   private pressed: ManagedWindow | null = null
-  private pendingPress: { managed: ManagedWindow; startedAt: number } | null = null
+  private pendingPress: { managed: ManagedWindow; pressPoint: Electron.Point; startedAt: number } | null = null
   private lastMoveKey = ''
   private lastPollErrorAt = 0
 
@@ -80,13 +80,14 @@ export class ClickForwarder {
     }
 
     // A press over an overlay window: the game takes the capture once it handles the press, which
-    // can be a frame after the button went down. No capture means the window got the real click.
+    // can be a frame after the button went down (even after a quick release). No capture within
+    // CAPTURE_WAIT_MS means the window got the real click.
     if (isButtonDown && !wasButtonDown) {
       const hit = this.hitTest(cursor)
-      this.pendingPress = hit ? { managed: hit.managed, startedAt: Date.now() } : null
+      this.pendingPress = hit ? { managed: hit.managed, pressPoint: cursor, startedAt: Date.now() } : null
     }
     if (this.pendingPress) {
-      const target = this.toTarget(this.pendingPress.managed, cursor)
+      const target = this.toTarget(this.pendingPress.managed, this.pendingPress.pressPoint)
       if (target && isCaptured) {
         this.pendingPress = null
         console.log(`Click forwarded to ${target.managed.name}`, { x: target.x, y: target.y })
@@ -98,7 +99,7 @@ export class ClickForwarder {
         }
         return
       }
-      if (!target || !isButtonDown || Date.now() - this.pendingPress.startedAt > CAPTURE_WAIT_MS) {
+      if (!target || Date.now() - this.pendingPress.startedAt > CAPTURE_WAIT_MS) {
         console.log(`Click on ${this.pendingPress.managed.name} not forwarded (game did not take the capture)`)
         this.pendingPress = null
       }

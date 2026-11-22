@@ -73,6 +73,7 @@ function ShopBlocker() {
       setWindowId(currentWindow.id)
       void platform?.setWindowMinSize(currentWindow.id, NATIVE_MIN_WINDOW_SIZE, NATIVE_MIN_WINDOW_SIZE)
       setRect(toRect(currentWindow))
+      platform?.sendMessage(BACKGROUND_WINDOW_ID, 'BLOCKER_MOUNTED', { windowId: currentWindow.id })
     })
 
     return platform.onMessage((event) => {
@@ -194,6 +195,8 @@ function ShopBlocker() {
             type="button"
             className="shop-blocker__offer"
             onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onMouseUp={(e) => e.stopPropagation()}
             onClick={(e) => {
               consumeEvent(e)
               setFreeAugmentPicks(0)

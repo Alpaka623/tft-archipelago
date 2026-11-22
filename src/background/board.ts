@@ -17,44 +17,73 @@ export const itemGrantedTraits = (traitsData as TraitsData).items ?? {}
 const traitDisplayNames = (traitsData as TraitsData).traitNames ?? {}
 const championAliases = (traitsData as TraitsData).championAliases ?? {}
 
-// "Lux on your board" accepts every Lux form
+const AVATAR_TRAIT = 'Avatar'
+
+// "Lux on your board" accepts every Lux form; Adaptor (_AD/_AP) and transforming forms (Gnar)
+// normalize to the id listed in traits.json
 export function getCanonicalChampionId(championId: string): string {
   const aliased = championAliases[championId]
   if (aliased) return aliased
   if (championCosts[championId] !== undefined) return championId
 
-  // Adaptor champions switch between _AD and _AP forms in game (log: DA_18_Akali_AP), while the
-  // data lists one form (DA_18_Akali_AD)
-  const base = championId.replace(/_(?:AD|AP)$/i, '')
-  if (base === championId) return championId
-  const known = [`${base}_AD`, `${base}_AP`, base].find(candidate => championCosts[candidate] !== undefined)
+  const base = championId.replace(/_?(?:AD|AP|Big|Large|Mega|Small)$/i, '')
+  const known = [`${base}_AD`, `${base}_AP`, `${base}Small`, base].find(candidate => championCosts[candidate] !== undefined)
   return known ? (championAliases[known] ?? known) : championId
 }
 
-// The EoG file has no trait counts, so count unique champions + emblems like the GEP path
-export function computeClientBoardTraits(units: { championId: string; itemIds: string[] }[]): ClientBoardTrait[] {
+// Resolve traits from the specific form first (e.g. DA_18_Lux_Inferno -> ['Avatar', 'Inferno']),
+// then fall back to the canonical id (e.g. DA_18_Akali_AP -> DA_18_Akali_AD, DA_18_GnarBig -> DA_18_GnarSmall)
+function getChampionBaseTraits(championId: string): string[] {
+  return championTraits[championId] ?? championTraits[getCanonicalChampionId(championId)] ?? []
+}
+
+// Count trait contributions from unique canonical champions + Avatar doubling + emblems
+function countBoardTraits(units: { championId: string; itemIds: string[] }[]): Map<string, number> {
   const championsByTrait = new Map<string, Set<string>>()
+  const avatarBonusByTrait = new Map<string, Set<string>>()
   const emblemsByTrait = new Map<string, number>()
 
   for (const unit of units) {
     const championId = getCanonicalChampionId(unit.championId)
-    for (const trait of championTraits[championId] ?? championTraits[unit.championId] ?? []) {
+    const baseTraits = getChampionBaseTraits(unit.championId)
+    const isAvatar = baseTraits.includes(AVATAR_TRAIT)
+
+    for (const trait of baseTraits) {
       const champions = championsByTrait.get(trait) ?? new Set<string>()
       champions.add(championId)
       championsByTrait.set(trait, champions)
+
+      // Avatar doubles the champion's chosen origin trait once per unique Avatar champion
+      if (isAvatar && trait !== AVATAR_TRAIT) {
+        const bonusChampions = avatarBonusByTrait.get(trait) ?? new Set<string>()
+        bonusChampions.add(championId)
+        avatarBonusByTrait.set(trait, bonusChampions)
+      }
     }
+
     for (const itemId of unit.itemIds) {
       for (const trait of itemGrantedTraits[itemId] ?? []) {
         // An emblem on a unit that already has the trait adds nothing
-        if ((championTraits[championId] ?? []).includes(trait)) continue
+        if (baseTraits.includes(trait)) continue
         emblemsByTrait.set(trait, (emblemsByTrait.get(trait) ?? 0) + 1)
       }
     }
   }
 
   const traitNames = new Set([...championsByTrait.keys(), ...emblemsByTrait.keys()])
-  return [...traitNames].map((name) => {
-    const numUnits = (championsByTrait.get(name)?.size ?? 0) + (emblemsByTrait.get(name) ?? 0)
+  const counts = new Map<string, number>()
+  for (const name of traitNames) {
+    const numUnits = (championsByTrait.get(name)?.size ?? 0)
+      + (avatarBonusByTrait.get(name)?.size ?? 0)
+      + (emblemsByTrait.get(name) ?? 0)
+    counts.set(name, numUnits)
+  }
+  return counts
+}
+
+// The EoG file has no trait counts, so count unique champions + Avatar + emblems like the GEP path
+export function computeClientBoardTraits(units: { championId: string; itemIds: string[] }[]): ClientBoardTrait[] {
+  return [...countBoardTraits(units).entries()].map(([name, numUnits]) => {
     const breakpoints = traitBreakpoints[name] ?? []
     return {
       name,
@@ -99,7 +128,7 @@ export function readBoardUnits(snapshot: BoardSnapshot | null): BoardUnit[] {
 }
 
 export function getUnitTraits(unit: BoardUnit): Set<string> {
-  const traits = new Set(championTraits[unit.championId] ?? [])
+  const traits = new Set(getChampionBaseTraits(unit.championId))
 
   for (const itemId of unit.itemIds) {
     for (const trait of itemGrantedTraits[itemId] ?? []) {
@@ -111,25 +140,13 @@ export function getUnitTraits(unit: BoardUnit): Set<string> {
 }
 
 export function getChampionCost(championId: string): number | null {
-  const cost = Number(championCosts[championId])
+  const direct = championCosts[championId] ?? championCosts[getCanonicalChampionId(championId)]
+  const cost = Number(direct)
   return Number.isFinite(cost) ? cost : null
 }
 
 export function countTraitContributors(boardUnits: BoardUnit[]): Record<string, number> {
-  const uniqueChampionTraits = new Map<string, Set<string>>()
-
-  for (const unit of boardUnits) {
-    uniqueChampionTraits.set(unit.championId, getUnitTraits(unit))
-  }
-
-  const counts: Record<string, number> = {}
-  for (const traits of uniqueChampionTraits.values()) {
-    for (const trait of traits) {
-      counts[trait] = (counts[trait] ?? 0) + 1
-    }
-  }
-
-  return counts
+  return Object.fromEntries(countBoardTraits(boardUnits))
 }
 
 export function isTraitActive(trait: string, count: number): boolean {
@@ -155,17 +172,8 @@ export function isLocationCheckSatisfied(location: LocationCheck, context: Locat
         getCanonicalChampionId(unit.championId) === condition.championId
         && unit.starLevel >= (condition.minimumStarLevel ?? 1)
       ))
-    case 'trait': {
-      const uniqueContributors = new Set<string>()
-
-      for (const unit of boardUnits) {
-        if (getUnitTraits(unit).has(condition.trait)) {
-          uniqueContributors.add(unit.championId)
-        }
-      }
-
-      return uniqueContributors.size >= condition.minimumActive
-    }
+    case 'trait':
+      return (countTraitContributors(boardUnits)[condition.trait] ?? 0) >= condition.minimumActive
     case 'unit':
       if (condition.requiresPlayerCombat && !context.isPlayerCombat) return false
       return boardUnits.some(unit => (
@@ -206,6 +214,8 @@ const normalizedChampionCosts = new Map(
 
 function getClientUnitCost(unit: ClientMatchResult['units'][number]): number | null {
   if (unit.rarity !== null && CLIENT_RARITY_COSTS[unit.rarity] !== undefined) return CLIENT_RARITY_COSTS[unit.rarity] ?? null
+  const direct = getChampionCost(unit.championId)
+  if (direct !== null) return direct
   const cost = normalizedChampionCosts.get(normalizeGameAssetName(unit.championId))
   return cost !== undefined && Number.isFinite(cost) ? cost : null
 }
@@ -287,10 +297,10 @@ export function summarizeBoardTraits(snapshot: BoardSnapshot | null): UnknownRec
   const unmappedChampionIds: string[] = []
   const unmappedItemIds = new Set<string>()
   const units = boardUnits.map((unit) => {
-    const baseTraits = championTraits[unit.championId]
+    const baseTraits = getChampionBaseTraits(unit.championId)
     const itemTraits = unit.itemIds.flatMap(itemId => itemGrantedTraits[itemId] ?? [])
 
-    if (!baseTraits) unmappedChampionIds.push(unit.championId)
+    if (baseTraits.length === 0) unmappedChampionIds.push(unit.championId)
     for (const itemId of unit.itemIds) {
       if (!itemGrantedTraits[itemId]) unmappedItemIds.add(itemId)
     }
@@ -298,16 +308,14 @@ export function summarizeBoardTraits(snapshot: BoardSnapshot | null): UnknownRec
     return {
       cellId: unit.cellId,
       championId: unit.championId,
-      baseTraits: baseTraits ?? [],
+      baseTraits,
       itemIds: unit.itemIds,
       itemTraits,
       effectiveTraits: [...getUnitTraits(unit)],
     }
   })
 
-  const uniqueChampionTraits = new Map<string, Set<string>>()
   for (const unit of boardUnits) {
-    uniqueChampionTraits.set(unit.championId, getUnitTraits(unit))
     for (const itemId of unit.itemIds) {
       for (const trait of itemGrantedTraits[itemId] ?? []) {
         itemTraitCounts[trait] = (itemTraitCounts[trait] ?? 0) + 1
@@ -315,11 +323,7 @@ export function summarizeBoardTraits(snapshot: BoardSnapshot | null): UnknownRec
     }
   }
 
-  for (const traits of uniqueChampionTraits.values()) {
-    for (const trait of traits) {
-      traitCounts[trait] = (traitCounts[trait] ?? 0) + 1
-    }
-  }
+  Object.assign(traitCounts, countTraitContributors(boardUnits))
 
   return {
     championIds: [...championIds],

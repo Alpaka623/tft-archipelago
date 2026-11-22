@@ -164,6 +164,13 @@ export class HudAligner {
     return bottom.source !== 'anchor' || top.source !== 'anchor' || (needsAugmentAnchor && shopVisible === false)
   }
 
+  // Re-verify the cached alignment on the next live match frame (e.g. after leaving the client menu)
+  markUnverified(): void {
+    this.isVerified = false
+    this.lastAttemptAt = 0
+    this.lastSentKey = ''
+  }
+
   maybeRealign(frame: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, shopVisible: boolean | null, now: number): void {
     const needsWork = !this.isVerified || this.needsAlignment(this.getAlignment(), shopVisible)
     if (needsWork && now - this.lastAttemptAt >= ALIGNMENT_RETRY_MS) void this.run(frame, shopVisible)
@@ -215,10 +222,13 @@ export class HudAligner {
       }
 
       const alignment = buildAlignment(profileKey, this.getClientRectInFrame(), matches, previous)
+      const hasAnchorMatch = matches.some(match => match.score >= ANCHOR_MIN_SCORE)
       this.current = alignment
-      this.isVerified = true
-      this.calibration.getProfile(profileKey).alignment = alignment
-      void this.calibration.save()
+      if (hasAnchorMatch) {
+        this.isVerified = true
+        this.calibration.getProfile(profileKey).alignment = alignment
+        void this.calibration.save()
+      }
       this.sendToBackground()
       const alignmentKey = JSON.stringify([profileKey, alignment.groups])
       if (alignmentKey === this.lastLoggedKey) return

@@ -2,11 +2,15 @@ import { describe, expect, it } from 'vitest'
 import type { LocationCheck, LocationCondition } from '../data/locations'
 import {
   championTraits,
+  computeClientBoardTraits,
   formatStageRound,
+  getCanonicalChampionId,
   getStageFromRound,
   isLocationCheckSatisfied,
+  isLocationCheckSatisfiedByClientResult,
   TOCKERS_TRIALS_QUEUE_ID,
 } from './board'
+import type { ClientMatchResult } from './client-match'
 import type { BoardSnapshot, LocationValidationContext } from './types'
 
 function check(condition: LocationCondition): LocationCheck {
@@ -84,5 +88,89 @@ describe('stage and round numbers', () => {
     expect(formatStageRound(11, TOCKERS_TRIALS_QUEUE_ID)).toBe('2-1')
     expect(formatStageRound(31, TOCKERS_TRIALS_QUEUE_ID)).toBe('3-10')
     expect(getStageFromRound(31, TOCKERS_TRIALS_QUEUE_ID)).toBe(3)
+  })
+})
+
+describe('Lux (Avatar) and transforming champion forms', () => {
+  function clientResult(units: { championId: string; starLevel?: number; itemIds?: string[] }[]): ClientMatchResult {
+    const normalized = units.map(unit => ({
+      championId: unit.championId,
+      starLevel: unit.starLevel ?? 1,
+      rarity: null,
+      itemIds: unit.itemIds ?? [],
+    }))
+    return {
+      gameId: 1,
+      queueId: 1100,
+      placement: 1,
+      level: 8,
+      lastRound: 30,
+      health: 20,
+      units: normalized,
+      traits: computeClientBoardTraits(normalized),
+    }
+  }
+
+  it('counts Lux variant origin traits twice via Avatar without losing the origin to the base alias', () => {
+    const faeTraits = computeClientBoardTraits([{ championId: 'DA_18_Lux_Fae', itemIds: [] }])
+    expect(faeTraits.find(entry => entry.name === 'Fae')).toMatchObject({ numUnits: 2, tierCurrent: 1 })
+    expect(faeTraits.find(entry => entry.name === 'Avatar')).toMatchObject({ numUnits: 1, tierCurrent: 1 })
+
+    const infernoResult = clientResult([
+      { championId: 'DA_18_Lux_Inferno' },
+      { championId: 'DA_18_Akali_AP' },
+      { championId: 'DA_18_Kennen' },
+      { championId: 'DA_18_Shen' },
+      { championId: 'DA_18_Varus' },
+    ])
+    expect(infernoResult.traits.find(entry => entry.name === 'Inferno')?.numUnits).toBe(6)
+    expect(isLocationCheckSatisfiedByClientResult(
+      check({ type: 'trait', trait: 'Inferno', minimumActive: 5 }),
+      infernoResult,
+    )).toBe(true)
+    expect(isLocationCheckSatisfiedByClientResult(
+      check({ type: 'champion', championId: 'DA_Lux18_Base' }),
+      infernoResult,
+    )).toBe(true)
+  })
+
+  it('does not double-count duplicate Lux copies and handles emblems on Lux accurately', () => {
+    const duplicateLux = computeClientBoardTraits([
+      { championId: 'DA_18_Lux_Inferno', itemIds: ['DA_18_EmblemInferno', 'DA_18_EmblemBrawler'] },
+      { championId: 'DA_18_Lux_Inferno', itemIds: [] },
+    ])
+    expect(duplicateLux.find(entry => entry.name === 'Inferno')?.numUnits).toBe(2)
+    expect(duplicateLux.find(entry => entry.name === 'Brawler')?.numUnits).toBe(1)
+  })
+
+  it('applies Avatar doubling in GEP board validation too', () => {
+    const snapshot = board({ name: 'DA_18_Lux_Fae' })
+    expect(isLocationCheckSatisfied(check({ type: 'trait', trait: 'Fae', minimumActive: 2 }), context({ snapshot }))).toBe(true)
+  })
+
+  it('normalizes Mega Gnar forms to DA_18_GnarSmall for champion, cost and Brawler checks', () => {
+    expect(getCanonicalChampionId('DA_18_GnarBig')).toBe('DA_18_GnarSmall')
+    expect(getCanonicalChampionId('DA_18_GnarMega')).toBe('DA_18_GnarSmall')
+    expect(getCanonicalChampionId('DA_18_Gnar')).toBe('DA_18_GnarSmall')
+
+    const brawlerResult = clientResult([
+      { championId: 'DA_18_GnarBig', starLevel: 2 },
+      { championId: 'DA_18_Alistar' },
+      { championId: 'DA_18_Kobuko' },
+      { championId: 'DA_18_Sett' },
+    ])
+    expect(brawlerResult.traits.find(entry => entry.name === 'Brawler')?.numUnits).toBe(4)
+    expect(isLocationCheckSatisfiedByClientResult(
+      check({ type: 'trait', trait: 'Brawler', minimumActive: 4 }),
+      brawlerResult,
+    )).toBe(true)
+    expect(isLocationCheckSatisfiedByClientResult(
+      check({ type: 'champion', championId: 'DA_18_GnarSmall' }),
+      brawlerResult,
+    )).toBe(true)
+    expect(isLocationCheckSatisfiedByClientResult(
+      check({ type: 'unit', cost: 5, minimumStarLevel: 2 }),
+      brawlerResult,
+    )).toBe(true)
   })
 })
