@@ -33,6 +33,12 @@ export class TftLogTracker {
   private completedRounds = 0
   private matchStartedAt: number | null = null
 
+  // New TFT.log file (new process): drop any round count left over from a crashed previous process
+  reset(): void {
+    this.completedRounds = 0
+    this.matchStartedAt = null
+  }
+
   // Current round of the match whose start the log showed after `notBefore`; null otherwise, so an
   // old game's log never leaks into a new session
   getCurrentRound(notBefore: number): number | null {

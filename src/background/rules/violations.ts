@@ -2,6 +2,7 @@
 import type { ViolationOverride } from '../../types/state'
 import { VISION_WINDOW_ID } from '../../types/vision'
 import { deriveState, getErrorMessage } from '../app-state'
+import { evaluateLiveBoard } from '../archipelago/checks'
 import { broadcastState, sendToConnectedWindows } from '../broadcast'
 import { logGep } from '../log'
 import { client, platform } from '../runtime'
@@ -125,4 +126,5 @@ export async function overrideViolation(): Promise<void> {
   logGep('Rule violation overridden', override)
   sendOverrideResult(true, 'Override posted to the multiworld chat. The run is valid again.')
   broadcastState()
+  evaluateLiveBoard('violation overridden')
 }

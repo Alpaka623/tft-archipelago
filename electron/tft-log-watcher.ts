@@ -79,9 +79,10 @@ export class TftLogWatcher {
     const length = Math.min(stat.size - this.offset, MAX_READ_BYTES)
     const handle = await fs.open(logPath, 'r')
     let text: string
+    let bytesRead = 0
     try {
       const buffer = Buffer.alloc(length)
-      const { bytesRead } = await handle.read(buffer, 0, length, this.offset)
+      ;({ bytesRead } = await handle.read(buffer, 0, length, this.offset))
       this.offset += bytesRead
       text = buffer.subarray(0, bytesRead).toString('utf8')
     } finally {
@@ -95,7 +96,8 @@ export class TftLogWatcher {
       .filter((event): event is TftLogEvent => event !== null)
 
     const isReplay = !this.hasReadInitialLog
-    this.hasReadInitialLog = true
+    // Multi-chunk logs (> MAX_READ_BYTES) stay in replay mode until the watcher catches up to EOF
+    if (this.offset >= stat.size || bytesRead === 0) this.hasReadInitialLog = true
     if (events.length === 0) return
     this.callbacks.onLogEvents({ events, isReplay, isNewFile: this.isNewFile })
     this.isNewFile = false

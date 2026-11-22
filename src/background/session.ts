@@ -186,16 +186,26 @@ function handleMatchLifecycleEvent(event: TftLogEvent, isReplay: boolean): void 
 
 // TFT client log (Electron): match boundaries and the round count for the live stage
 export function handleTftLogBatch(batch: TftLogBatch): void {
-  if (batch.isNewFile) clientMatchTracker?.handleLogFileStarted()
+  if (batch.isNewFile) {
+    clientMatchTracker?.handleLogFileStarted()
+    tftLogTracker.reset()
+  }
   let roundChanged = false
   for (const event of batch.events) {
     // the match end needs the round count of the match that just ended
     handleMatchLifecycleEvent(event, batch.isReplay)
     if (tftLogTracker.handleEvents([event]).roundChanged) roundChanged = true
   }
-  // the next round's shop refresh follows; vision may miss the stage label change
-  const roundEndedAt = getRoundEndTimes(batch.events).pop()
-  if (!batch.isReplay && roundEndedAt !== undefined && session.isTftRunning) handleVisionLogRoundEnd(roundEndedAt)
+  // the next round's shop refresh follows; ignore round ends that happened before a match_end in
+  // the same batch or once back in the menu (would consume a pending trap in the menu)
+  const lastMatchEndIndex = batch.events.reduce(
+    (lastIndex, event, index) => (event.type === 'match_end' ? index : lastIndex),
+    -1,
+  )
+  const roundEndedAt = getRoundEndTimes(batch.events.slice(lastMatchEndIndex + 1)).pop()
+  if (!batch.isReplay && roundEndedAt !== undefined && session.isTftRunning && session.matchState !== 'menu') {
+    handleVisionLogRoundEnd(roundEndedAt)
+  }
   if (roundChanged && session.isTftRunning) {
     validateImmediateMinorChecks()
     // The stage is shown in Discord but not part of the broadcast state

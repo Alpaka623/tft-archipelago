@@ -67,7 +67,7 @@ export function applyPendingTraps(): void {
   bonus.activeTraps.rerollLock = false
   bonus.activeTraps.xpLock = false
   bonus.activeTraps.shopLock = false
-  if (!session.isTftRunning) return
+  if (!session.isTftRunning || session.matchState === 'menu') return
   const { pendingTraps } = deriveState().bonusItems
   for (const kind of ['rerollLock', 'xpLock', 'shopLock'] as const) {
     if (pendingTraps[kind] > 0) applyTrap(kind)

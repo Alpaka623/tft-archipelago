@@ -5,7 +5,6 @@ import { getErrorMessage, isMajorLocationUnlocked } from '../app-state'
 import { broadcastState } from '../broadcast'
 import { isRecord, readNumberFromRaw } from '../raw'
 import { loadBonusUsage } from '../rules/bonus-usage'
-import { validateCurrentRules } from '../rules/engine'
 import { client } from '../runtime'
 import {
   DEFAULT_GOAL_CHECKS,
@@ -27,6 +26,7 @@ import {
 
 const AP_GAME_NAME = 'TFT Archipelago'
 const MAX_PINNED_CHECKS = 3
+const RECONNECT_DELAYS_MS = [2000, 5000, 10000, 30000]
 
 export interface ConnectionSettings {
   hostname: string
@@ -45,6 +45,22 @@ interface TftSlotData extends Record<string, unknown> {
 let settings: ConnectionSettings = { hostname: '', port: 38281, slotName: '', password: '' }
 let isReconnecting = false
 let hasConnectedSuccessfully = false
+let reconnectTimerId: number | null = null
+let reconnectAttempt = 0
+
+function clearReconnectTimer(): void {
+  if (reconnectTimerId !== null) window.clearTimeout(reconnectTimerId)
+  reconnectTimerId = null
+}
+
+function scheduleReconnect(): void {
+  if (reconnectTimerId !== null || !hasConnectedSuccessfully || client.authenticated) return
+  const delay = RECONNECT_DELAYS_MS[Math.min(reconnectAttempt, RECONNECT_DELAYS_MS.length - 1)]
+  reconnectTimerId = window.setTimeout(() => {
+    reconnectTimerId = null
+    void reconnect()
+  }, delay)
+}
 
 function readLocationCategory(value: unknown): LocationCategory | null {
   return value === 'major' || value === 'minor' ? value : null
@@ -117,22 +133,28 @@ async function login(): Promise<void> {
     { password: settings.password },
   ) as TftSlotData
   applySlotData(slotData)
-  void loadBonusUsage().catch(error => console.warn('Failed to load bonus item usage:', error))
+  await loadBonusUsage().catch(error => console.warn('Failed to load bonus item usage:', error))
   await loadCompletedMajors().catch(error => console.warn('Failed to load completed majors:', error))
   connection.error = null
   hasConnectedSuccessfully = true
+  reconnectAttempt = 0
+  clearReconnectTimer()
   flushPendingChecks()
   maybeReportGoal()
 }
 
 async function reconnect(): Promise<void> {
-  if (isReconnecting) return
+  if (isReconnecting || connection.isConnecting || client.authenticated) return
+  clearReconnectTimer()
   isReconnecting = true
+  reconnectAttempt += 1
   connection.isConnecting = true
   connection.error = null
   broadcastState()
+  let succeeded = false
   try {
     await login()
+    succeeded = true
     broadcastState()
   } catch (error) {
     connection.error = getErrorMessage(error)
@@ -142,11 +164,14 @@ async function reconnect(): Promise<void> {
     connection.isConnecting = false
     isReconnecting = false
     broadcastState()
+    if (!succeeded) scheduleReconnect()
   }
 }
 
 export async function connect(nextSettings: ConnectionSettings): Promise<void> {
   settings = nextSettings
+  clearReconnectTimer()
+  reconnectAttempt = 0
   if (connection.isConnecting) return
   connection.isConnecting = true
   connection.error = null
@@ -173,11 +198,10 @@ export function registerArchipelagoListeners(): void {
   client.socket.on('disconnected', () => {
     connection.isConnecting = false
     broadcastState()
-    if (hasConnectedSuccessfully) void reconnect()
+    if (hasConnectedSuccessfully) scheduleReconnect()
   })
 
   client.items.on('itemsReceived', (items) => {
-    validateCurrentRules()
     if (!consumeItemNotificationSuppression()) notifyItemsReceived(items)
     broadcastState()
   })
