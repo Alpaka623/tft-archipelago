@@ -151,6 +151,9 @@ function handleMatchLifecycleEvent(event: TftLogEvent, isReplay: boolean): void 
       tracker.handleLogGameStart(event)
       if (session.isTftRunning && session.matchState !== 'in_match') openMatch(event.at, 'game assigned')
       break
+    case 'player_puuid':
+      tracker.handleLogPuuid(event.puuid)
+      break
     case 'match_start':
       tracker.handleLogLobbyState('InGame')
       if (!session.isTftRunning) break

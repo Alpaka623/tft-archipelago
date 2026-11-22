@@ -11,8 +11,11 @@ export type TftLogEvent =
   | { type: 'match_end'; at: string }
   // Any other "Entering LobbyState[...]": Frontend, SoloMode, SocialMode, Matchmaking, EndOfGameSummary, ...
   | { type: 'lobby_state'; at: string; state: string }
-  // Riot messaging "gsm/game-update/IN_PROGRESS" (standalone client): game found, before loading
+  // Riot messaging "gsm/game-update/IN_PROGRESS" (standalone client): game found, before loading,
+  // or TFTLobbySubsystem reconnect lines (when resuming an in-progress match without IN_PROGRESS)
   | { type: 'game_start'; at: string; gameId: number; queueId: number | null; puuid: string | null }
+  // Local player's PUUID from "parties/v1/notifications/tft" (covers reconnects that omit IN_PROGRESS)
+  | { type: 'player_puuid'; at: string; puuid: string }
   // "Audio.Event.VO.Unit.StarUp.2Star" on one of the player's own units, from any source
   // (three copies, duplicator, loot). Parsed but not used for checks; they use the board file.
   | { type: 'star_up'; at: string; actorId: string; championId: string; starLevel: number }
@@ -50,10 +53,17 @@ const LOBBY_STATE_REPEAT_SUFFIX = 'had no side effect'
 // One RMS line per game; the same message also appears escaped in a "Got message" line, which is skipped.
 // The payload also holds connection keys: only the three fields below are read, the line is never kept.
 const GAME_START_MARKER = "for resource 'lol-gsm-server/v1/gsm/game-update/IN_PROGRESS'"
+const PARTIES_NOTIFICATION_MARKER = "for resource 'parties/v1/notifications/tft'"
 const GAME_ID_PATTERN = /"playerCredentials":\{"gameId":(\d+)/
 const PAYLOAD_ID_PATTERN = /payload '\{"id":(\d+)/
 const QUEUE_ID_PATTERN = /"queueId":(\d+)/
 const PUUID_PATTERN = /"puuid":"([0-9A-Za-z_-]{20,100})"/
+const PARTIES_PLAYER_PUUID_PATTERN = /"player":\{[^}]*"puuid":"([0-9A-Za-z_-]{20,100})"/
+// Reconnect lines in the standalone client (2026-11-22, Tocker's Trials) when resuming a running match
+const RECONNECT_GAME_PATTERNS = [
+  /Found GameId=\[(\d+)\] that we can reconnect to\. SetActiveQueue=\[(\d+)\]/,
+  /Reconnect GameId=\[(\d+)\] ActiveQueueId=\[(\d+)\]/,
+]
 
 function parseGameStart(line: string, at: string): TftLogEvent | null {
   const gameId = Number(GAME_ID_PATTERN.exec(line)?.[1] ?? PAYLOAD_ID_PATTERN.exec(line)?.[1])
@@ -68,6 +78,24 @@ function parseGameStart(line: string, at: string): TftLogEvent | null {
   }
 }
 
+function parseReconnectGameStart(line: string, at: string): TftLogEvent | null {
+  for (const pattern of RECONNECT_GAME_PATTERNS) {
+    const match = pattern.exec(line)
+    if (!match) continue
+    const gameId = Number(match[1])
+    const queueId = Number(match[2])
+    if (!Number.isSafeInteger(gameId) || gameId <= 0) return null
+    return {
+      type: 'game_start',
+      at,
+      gameId,
+      queueId: Number.isSafeInteger(queueId) && queueId > 0 ? queueId : null,
+      puuid: null,
+    }
+  }
+  return null
+}
+
 export function parseTftLogLine(line: string): TftLogEvent | null {
   const at = TIMESTAMP_PATTERN.exec(line)?.[1]
   if (!at) return null
@@ -77,6 +105,12 @@ export function parseTftLogLine(line: string): TftLogEvent | null {
   if (line.includes(MATCH_START_MARKER)) return isRepeat ? null : { type: 'match_start', at }
   if (line.includes(MATCH_END_MARKER)) return isRepeat ? null : { type: 'match_end', at }
   if (line.includes(GAME_START_MARKER)) return parseGameStart(line, at)
+  if (line.includes(PARTIES_NOTIFICATION_MARKER)) {
+    const puuid = PARTIES_PLAYER_PUUID_PATTERN.exec(line)?.[1]
+    return puuid ? { type: 'player_puuid', at, puuid } : null
+  }
+  const reconnectGame = parseReconnectGameStart(line, at)
+  if (reconnectGame) return reconnectGame
   const lobbyState = isRepeat ? undefined : LOBBY_STATE_PATTERN.exec(line)?.[1]
   if (lobbyState) return { type: 'lobby_state', at, state: lobbyState }
 

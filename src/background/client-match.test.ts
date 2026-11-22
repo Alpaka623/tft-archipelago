@@ -371,4 +371,45 @@ describe('ClientMatchTracker without the League client', () => {
     expect(tracker.getStatus().lastOutcome).toMatchObject({ kind: 'not_counted', queueName: 'Double Up' })
     expect(tracker.getStatus().pending).toEqual([])
   })
+
+  it('tracks a reconnected match when gameId and puuid arrive in separate log events', async () => {
+    tracker.handleLogGameStart({ gameId: GAME_ID, queueId: 1100, puuid: null })
+    tracker.handleLogLobbyState('Reconnect')
+    tracker.handleEndOfGameStats(endOfGameFile([otherPlayer, me]))
+    // 8-player EoG stats wait until the PUUID arrives from the parties notification
+    tracker.handleLogPuuid(PUUID)
+    expect(tracker.getActiveGame()).toMatchObject({ gameId: GAME_ID, queueId: 1100, isCounted: true })
+    expect(tracker.getPuuid()).toBe(PUUID)
+
+    endSession(Date.now())
+    tracker.handleLogMatchEnd()
+    vi.advanceTimersByTime(5000)
+    await processPending()
+
+    expect(delivered).toHaveLength(1)
+    expect(delivered[0].result).toMatchObject({ gameId: GAME_ID, placement: 2 })
+  })
+
+  it('replaces an earlier delivered pause entry when a resumed Tocker\'s Trials run finishes', async () => {
+    tracker.handleLogGameStart({ gameId: GAME_ID, queueId: 1220, puuid: PUUID })
+    tracker.handleEndOfGameStats(endOfGameFile([{ ...me, health: 2 }]))
+    endSession(Date.now())
+    tracker.handleLogMatchEnd()
+    vi.advanceTimersByTime(5000)
+    await processPending()
+    expect(delivered).toHaveLength(1)
+
+    // Resumed in a new TFT process: same gameId, now finishes round 30 with health 1
+    tracker.handleLogFileStarted()
+    tracker.handleLogGameStart({ gameId: GAME_ID, queueId: 1220, puuid: null })
+    tracker.handleLogPuuid(PUUID)
+    tracker.handleEndOfGameStats(endOfGameFile([{ ...me, health: 1 }]))
+    tracker.queueSessionResult({ sessionStartedAt: Date.now(), isValidRun: true, violationReason: null, logRound: 30 })
+    tracker.handleLogMatchEnd()
+    vi.advanceTimersByTime(5000)
+    await processPending()
+
+    expect(delivered).toHaveLength(2)
+    expect(delivered[1].result).toMatchObject({ gameId: GAME_ID, health: 1 })
+  })
 })

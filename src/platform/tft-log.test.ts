@@ -46,4 +46,13 @@ describe('parseTftLogLine', () => {
     expect(parseTftLogLine('[2026.11.06-21.40.40:561][529]TFT: [Standalone] TFTLobbySubsystem_2147482177: Exiting LobbyState[ETFTLobbyState::EndOfGameSummary]'))
       .toBeNull()
   })
+
+  it('reads game id, queue and player puuid from standalone reconnect lines', () => {
+    expect(parseTftLogLine('[2026.11.22-16.33.11:025][358]TFT: [Standalone] TFTLobbySubsystem_2147482172: Found GameId=[8054230011] that we can reconnect to. SetActiveQueue=[1220]'))
+      .toEqual({ type: 'game_start', at: '2026.11.22-16.33.11:025', gameId: 8054230011, queueId: 1220, puuid: null })
+    expect(parseTftLogLine('[2026.11.22-16.33.11:059][358]TFT: [Standalone] TFTLobbySubsystem_2147482172: Loading lobby; bIsLoginFlow=[false] Reconnect GameId=[8054230011] ActiveQueueId=[1220]'))
+      .toEqual({ type: 'game_start', at: '2026.11.22-16.33.11:059', gameId: 8054230011, queueId: 1220, puuid: null })
+    expect(parseTftLogLine(`[2026.11.22-16.33.11:184][362]RGIOPRms: Received RMS message ID '' for resource 'parties/v1/notifications/tft' service 'Parties' payload '{"player":{"platformId":"EUW1","puuid":"2d15828a-c606-509d-b5db-a20fd70817f0"}}'`))
+      .toEqual({ type: 'player_puuid', at: '2026.11.22-16.33.11:184', puuid: '2d15828a-c606-509d-b5db-a20fd70817f0' })
+  })
 })

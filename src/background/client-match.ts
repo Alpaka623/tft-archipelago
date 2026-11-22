@@ -376,11 +376,14 @@ export class ClientMatchTracker {
     return this.isInGame() ? this.currentGame : null
   }
 
-  // TFT client log: the game server assigned a game ("gsm/game-update/IN_PROGRESS")
+  // TFT client log: the game server assigned a game ("gsm/game-update/IN_PROGRESS" or reconnect)
   handleLogGameStart(event: { gameId: number; queueId: number | null; puuid: string | null }): void {
     if (event.puuid) this.logPuuid = event.puuid
+    const wasActive = this.isLogGameActive
     this.isLogGameActive = true
-    if (event.gameId !== this.currentGame?.gameId) {
+    this.finishedGameIds.delete(event.gameId)
+    this.endedLogGameIds.delete(event.gameId)
+    if (event.gameId !== this.currentGame?.gameId || !wasActive) {
       this.currentGame = describeTftGame(event.gameId, event.queueId, Date.now())
       this.deps.log('Client match: TFT game detected from the TFT client log', {
         gameId: this.currentGame.gameId,
@@ -388,6 +391,18 @@ export class ClientMatchTracker {
         queue: this.currentGame.queueName,
         counted: this.currentGame.isCounted,
       })
+    }
+    this.deps.onStatusChanged()
+  }
+
+  // TFT client log: local player's PUUID (needed for 8-player EoG files after a reconnect without IN_PROGRESS)
+  handleLogPuuid(puuid: string): void {
+    if (!puuid || puuid === this.logPuuid) return
+    this.logPuuid = puuid
+    if (this.unparsedEndOfGameStats !== null) {
+      const stats = this.unparsedEndOfGameStats
+      this.unparsedEndOfGameStats = null
+      this.handleEndOfGameStats(stats)
     }
     this.deps.onStatusChanged()
   }
@@ -478,7 +493,13 @@ export class ClientMatchTracker {
       this.finish({ gameId: game.gameId, queueName: game.queueName, placement: null, kind: 'not_counted', fulfilledLocationIds: [] })
       return
     }
-    if (game && this.pending.some(entry => entry.gameId === game.gameId)) return
+    if (game) {
+      // Resuming a paused Tocker's Trials run reuses the same gameId: replace an already-delivered
+      // pause entry instead of dropping the final match result
+      const existing = this.pending.find(entry => entry.gameId === game.gameId)
+      if (existing && !existing.endOfGameDelivered) return
+      if (existing) this.pending = this.pending.filter(entry => entry !== existing)
+    }
 
     const entry: PendingClientMatch = {
       gameId: game?.gameId ?? null,
