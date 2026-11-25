@@ -28,12 +28,16 @@ export interface AnchorMatch {
   score: number
 }
 
+export const HUD_GROUPS: HudGroup[] = ['bottom', 'top', 'augment']
+
 export interface GroupTransform {
   scale: number
   offsetX: number
   offsetY: number
   score: number
-  source: 'anchor' | 'derived' | 'fallback'
+  // anchor: found in this frame, or carried over from earlier in this match where it was trusted
+  // cached: carried over from an earlier match or save, not confirmed yet in this match
+  source: 'anchor' | 'cached' | 'derived' | 'fallback'
 }
 
 export interface HudAlignment {
@@ -270,12 +274,26 @@ function fallbackTransform(group: HudGroup, client: Rect, scale: number, source:
   return { scale, offsetX, offsetY, score: 0, source }
 }
 
-export function buildAlignment(profileKey: string, client: Rect, matches: AnchorMatch[], previous?: HudAlignment | null): HudAlignment {
+// `trusted`: groups already confirmed by an anchor in the current match. Carried-over groups keep
+// source 'anchor' only for those; anything else carried over is 'cached' and must be confirmed again,
+// because the HUD can sit elsewhere in another game mode or window state at the same resolution.
+export function buildAlignment(
+  profileKey: string,
+  client: Rect,
+  matches: AnchorMatch[],
+  previous?: HudAlignment | null,
+  trusted: ReadonlySet<HudGroup> = new Set(),
+): HudAlignment {
   const found = (name: string) => matches.find(match => match.name === name && match.score >= ANCHOR_MIN_SCORE) ?? null
   const width = client.w
   // The HUD scales with the client height, not with the captured window frame
   const fallbackScale = client.h / REFERENCE_HEIGHT
   const snap = (scale: number) => (Math.abs(scale / fallbackScale - 1) <= HEIGHT_SCALE_SNAP ? fallbackScale : scale)
+  const carried = (group: HudGroup): GroupTransform | null => {
+    const transform = previous?.groups[group]
+    if (!transform || (transform.source !== 'anchor' && transform.source !== 'cached')) return null
+    return { ...transform, source: trusted.has(group) ? 'anchor' : 'cached' }
+  }
 
   let bottom: GroupTransform
   const buyXp = found('buy_xp')
@@ -288,12 +306,12 @@ export function buildAlignment(profileKey: string, client: Rect, matches: Anchor
     }
     bottom = transformFromMatch(buyXp, snap(scale))
   } else {
-    bottom = previous?.groups.bottom.source === 'anchor' ? previous.groups.bottom : fallbackTransform('bottom', client, fallbackScale, 'fallback')
+    bottom = carried('bottom') ?? fallbackTransform('bottom', client, fallbackScale, 'fallback')
   }
 
   // The stage icon is too small for a precise scale; it only pins the position
   // Reject secondary matches that contradict an anchored bottom group (e.g. a match on a
-  // transitional frame right after a resolution change)
+  // transitional frame right after a resolution change). A merely cached bottom group vetoes nothing.
   const agreesWithBottom = (match: AnchorMatch | null, scale: number): AnchorMatch | null => {
     if (!match || bottom.source !== 'anchor') return match
     const offsetX = match.x - REFERENCE_ANCHOR_RECTS[match.name].x * scale
@@ -308,22 +326,56 @@ export function buildAlignment(profileKey: string, client: Rect, matches: Anchor
       && Math.abs(transform.offsetX - bottom.offsetX) <= GROUP_OFFSET_TOLERANCE * width)
   )
 
-  const stageIcon = agreesWithBottom(found('stage_icon'), bottom.scale)
+  // `rejected`: a strong fresh match for this group was on screen but contradicts the bottom group. A
+  // carried group is no evidence against it, so it is not carried (and not trusted) unless this match
+  // already confirmed it: the group stays unconfirmed and keeps being searched.
+  const carriedIfAgrees = (group: HudGroup, rejected: boolean): GroupTransform | null => {
+    if (rejected && !trusted.has(group)) return null
+    const transform = carried(group)
+    return transform && transformAgreesWithBottom(transform) ? transform : null
+  }
+
+  const stageIconMatch = found('stage_icon')
+  const stageIcon = agreesWithBottom(stageIconMatch, bottom.scale)
   const top = stageIcon
-    ? transformFromMatch(stageIcon, bottom.source === 'anchor' ? bottom.scale : snap(stageIcon.scale))
-    : previous?.groups.top.source === 'anchor' && transformAgreesWithBottom(previous.groups.top)
-      ? previous.groups.top
-      : fallbackTransform('top', client, bottom.scale, 'fallback')
+    ? transformFromMatch(stageIcon, bottom.source === 'anchor' || bottom.source === 'cached' ? bottom.scale : snap(stageIcon.scale))
+    : carriedIfAgrees('top', stageIconMatch !== null) ?? fallbackTransform('top', client, bottom.scale, 'fallback')
 
   const chooseOneMatch = found('choose_one')
   const chooseOne = agreesWithBottom(chooseOneMatch, chooseOneMatch ? snap(chooseOneMatch.scale) : bottom.scale)
   const augment = chooseOne
     ? transformFromMatch(chooseOne, snap(chooseOne.scale))
-    : previous?.groups.augment.source === 'anchor' && transformAgreesWithBottom(previous.groups.augment)
-      ? previous.groups.augment
-      : fallbackTransform('augment', client, bottom.scale, 'derived')
+    : carriedIfAgrees('augment', chooseOneMatch !== null) ?? fallbackTransform('augment', client, bottom.scale, 'derived')
 
   return { profileKey, groups: { bottom, top, augment }, matches }
+}
+
+// A saved alignment or one from an earlier match: still usable as a starting point, but unconfirmed
+export function markAlignmentCached(alignment: HudAlignment): HudAlignment {
+  const groups = Object.fromEntries(HUD_GROUPS.map((group) => {
+    const transform = alignment.groups[group]
+    return [group, transform.source === 'anchor' ? { ...transform, source: 'cached' } : transform]
+  })) as Record<HudGroup, GroupTransform>
+  return { ...alignment, groups }
+}
+
+// Adds the groups this alignment confirms to `trusted` (the current match) and marks them 'anchor'.
+// Top and augment only count once the bottom group is confirmed: until then a lone secondary match can
+// come from a transitional frame. With a confirmed bottom group, buildAlignment only kept secondary
+// groups that agree with it and that no strong fresh match contradicts, so carried-over ones count as
+// confirmed too.
+export function promoteTrustedGroups(alignment: HudAlignment, trusted: Set<HudGroup>): HudAlignment {
+  const groups = { ...alignment.groups }
+  if (groups.bottom.source === 'anchor') trusted.add('bottom')
+  if (!trusted.has('bottom')) return alignment
+
+  for (const group of HUD_GROUPS) {
+    const transform = groups[group]
+    if (transform.source !== 'anchor' && transform.source !== 'cached') continue
+    trusted.add(group)
+    groups[group] = { ...transform, source: 'anchor' }
+  }
+  return { ...alignment, groups }
 }
 
 export function mapRect(rect: Rect, transform: GroupTransform): Rect {

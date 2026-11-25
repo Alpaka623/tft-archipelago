@@ -15,6 +15,7 @@ import {
   augments,
   bonus,
   connection,
+  detection,
   economy,
   majorLocationIds,
   round,
@@ -119,6 +120,7 @@ export function deriveState(): AppState {
       .filter(id => !unlockedMajorIdSet.has(id)),
     pinnedChecks: slot.pinnedChecks,
     clientMatch: clientMatchTracker?.getStatus() ?? null,
+    detection: detection.health,
     bonusItems: {
       stock: subtractCounts(countReceived(receivedIds, BONUS_ITEM_IDS), bonus.used),
       pendingTraps: subtractCounts(countReceived(receivedIds, TRAP_ITEM_IDS), bonus.appliedTraps),

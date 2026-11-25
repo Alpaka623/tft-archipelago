@@ -286,6 +286,23 @@ const FAQ_SECTIONS: FaqSection[] = [
         ),
       },
       {
+        id: 'detection',
+        question: 'The sidebar says Detection: Searching or Limited.',
+        keywords: 'detection limited searching hud screen reading vision shop xp reroll gold not counted capture',
+        answer: (
+          <>
+            <p>During a match the app reads the shop, gold, XP and rerolls from the TFT window. The <strong>Detection</strong> row shows whether that works:</p>
+            <ul>
+              <li><strong>OK</strong>: everything is read and counted.</li>
+              <li><strong>Searching</strong>: the app is still locating the HUD, for example at the start of a match or while the loading screen, carousel or augment choice hides the shop.</li>
+              <li><strong>Limited</strong> (yellow): the app could not confirm where the HUD is, but it reads your gold. Most of the detection likely works; some shop purchases, XP buys or rerolls may still go uncounted.</li>
+              <li><strong>Limited</strong> (red): the app could not read the HUD for a while. Shop purchases, XP buys and rerolls may not be counted, and gold and level checks may wait until the HUD is found. Board checks after the match still work.</li>
+            </ul>
+            <p>The app keeps looking on its own and switches back to OK once it finds the HUD. You do not need to do anything. Detection works best with the game client set to English and the TFT window visible on screen.</p>
+          </>
+        ),
+      },
+      {
         id: 'riot-client',
         question: 'The sidebar says the TFT client is not running.',
         keywords: 'riot client league client tft client not found not running lockfile phase lobby standalone',

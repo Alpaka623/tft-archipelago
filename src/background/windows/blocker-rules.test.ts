@@ -38,6 +38,7 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     lockedMajorLocationIds: [],
     pinnedChecks: [],
     clientMatch: null,
+    detection: null,
     bonusItems: EMPTY_BONUS_ITEMS_STATE,
     ...overrides,
   }

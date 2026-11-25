@@ -2,7 +2,7 @@ import type { LocationCategory } from '../data/locations'
 import type { BonusItemsState } from '../background/bonus-items'
 import type { ClientMatchStatus } from '../background/client-match'
 import type { DebugGameEvent } from './debug'
-import type { VisionGameState, VisionHudAlignment } from './vision'
+import type { VisionDetectionFacts, VisionGameState, VisionHudAlignment } from './vision'
 
 export interface PinnedCheck {
   id: number
@@ -62,6 +62,16 @@ export interface InventoryItemStack {
   count: number
 }
 
+// Electron screen reading during a match. searching: still locating the HUD; partial: HUD not confirmed,
+// but gold is read, so most of it likely works; degraded: shop, XP, rerolls or gold may not be read, so
+// actions may go uncounted
+export type DetectionStatus = 'searching' | 'ok' | 'partial' | 'degraded'
+
+export interface DetectionHealth {
+  status: DetectionStatus
+  reason: string | null
+}
+
 export interface AppState {
   connected: boolean
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error'
@@ -101,6 +111,8 @@ export interface AppState {
   pinnedChecks: PinnedCheck[]
   // Electron only: Riot client connection and match results; null on Overwolf
   clientMatch: ClientMatchStatus | null
+  // Electron only, during a match: whether screen reading works; null otherwise
+  detection: DetectionHealth | null
   // One-time items in stock and active traps
   bonusItems: BonusItemsState
 }
@@ -121,6 +133,7 @@ export type BackgroundMessage =
   | { id: 'VISION_GAME_STATE'; content: VisionGameState }
   | { id: 'VISION_HUD_ALIGNMENT'; content: VisionHudAlignment }
   | { id: 'VISION_LAYOUT_CHANGED'; content: Record<string, never> }
+  | { id: 'VISION_DETECTION'; content: VisionDetectionFacts }
   | { id: 'USE_FREE_AUGMENT_PICK'; content: Record<string, never> }
 
 // Messages sent from background → overlay/desktop

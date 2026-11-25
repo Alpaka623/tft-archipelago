@@ -25,7 +25,7 @@ import {
   type AppUpdateStatus,
   type DiscordPresenceStatus,
 } from '../platform'
-import type { AppState, PinnedCheck } from '../types/state'
+import type { AppState, DetectionStatus, PinnedCheck } from '../types/state'
 import { describeRiotPhase } from './riot'
 import { MAX_PINNED_CHECKS, connectionLabel, sendPinnedChecks, type PageId } from './shared'
 
@@ -249,6 +249,48 @@ function DiscordPresenceRow() {
   )
 }
 
+const DETECTION_LABELS: Record<DetectionStatus, string> = {
+  searching: 'Searching',
+  ok: 'OK',
+  partial: 'Limited',
+  degraded: 'Limited',
+}
+
+const DETECTION_TONES: Record<DetectionStatus, string> = {
+  searching: 'warn',
+  ok: 'ok',
+  partial: 'warn',
+  degraded: 'bad',
+}
+
+const DETECTION_TEXT_CLASSES: Record<DetectionStatus, string> = {
+  searching: 'faint',
+  ok: 'faint',
+  partial: 'text-warn',
+  degraded: 'text-bad',
+}
+
+// Electron, during a match: screen reading status; "Limited" links to the FAQ entry
+function DetectionRow({ state, onSelect }: { state: AppState; onSelect: (page: PageId) => void }) {
+  const { detection } = state
+  if (!detection) return null
+  const content = (
+    <>
+      <span className={`dot ${DETECTION_TONES[detection.status]}`} />
+      <span>Detection</span>
+      <span className={DETECTION_TEXT_CLASSES[detection.status]}>{DETECTION_LABELS[detection.status]}</span>
+    </>
+  )
+  if (detection.status !== 'partial' && detection.status !== 'degraded') {
+    return <div className="sidebar-status-row" title={detection.reason ?? 'Shop, XP, rerolls and gold are read from the screen'}>{content}</div>
+  }
+  return (
+    <button className="sidebar-status-row sidebar-status-link" title={`${detection.reason ?? ''} Click for help.`} type="button" onClick={() => onSelect('faq')}>
+      {content}
+    </button>
+  )
+}
+
 function StatusBlock({ state, onSelect }: { state: AppState; onSelect: (page: PageId) => void }) {
   const riot = state.clientMatch ? describeRiotPhase(state.clientMatch) : null
   return (
@@ -265,6 +307,7 @@ function StatusBlock({ state, onSelect }: { state: AppState; onSelect: (page: Pa
           <span className="faint">{riot.label}</span>
         </div>
       )}
+      <DetectionRow state={state} onSelect={onSelect} />
       {state.isValidRun ? (
         <div className="sidebar-status-row">
           <span className="dot ok" />

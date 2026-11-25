@@ -13,6 +13,7 @@ import { getLiveRound } from './live-round'
 import { logGep } from './log'
 import { clientMatchTracker, platform, tftLogTracker } from './runtime'
 import { handleVisionLogRoundEnd } from './sources/vision'
+import { refreshDetectionHealth, resetDetectionHealth } from './sources/vision-health'
 import { getRoundEndTimes, parseTftLogTimestamp } from './tft-log-tracker'
 import { run, session, windows } from './state'
 import type { TftEndOfGameFile, TftLogBatch, TftLogEvent } from '../platform/tft-log'
@@ -33,6 +34,9 @@ function setMatchState(next: typeof session.matchState): void {
   if (session.matchState === next) return
   session.matchState = next
   syncVisionMatchState()
+  // A new match starts its detection status from scratch; leaving one hides it
+  if (next === 'in_match') resetDetectionHealth()
+  refreshDetectionHealth()
 }
 
 // Electron: placement and board arrive later from the TFT client files or the Riot client; freeze the rule state now
@@ -97,6 +101,9 @@ function handleSessionStart(reason: string): void {
   syncVisionMatchState()
   clientMatchTracker?.setGameProcessRunning(true)
   resetMatchDetectionState()
+  // Facts from before a crash or restart describe the old process; starts the status timer mid-match too
+  resetDetectionHealth()
+  refreshDetectionHealth(false)
   logGep('TFT session started: detection state reset', { reason, matchState: session.matchState })
   restoreReconnectSession()
   prewarmBlockerWindows(`${reason}; TFT session started`)

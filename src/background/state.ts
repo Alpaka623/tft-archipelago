@@ -1,7 +1,7 @@
 // Mutable state of the background controller, grouped by concern. State that only one module
 // needs stays private to that module; everything here is shared between modules.
 import { LOCATION_CHECKS, MAJOR_LOCATION_CHECKS, type LocationCheck } from '../data/locations'
-import type { PinnedCheck, ViolationOverride } from '../types/state'
+import type { DetectionHealth, PinnedCheck, ViolationOverride } from '../types/state'
 import type { VisionHudAlignment } from '../types/vision'
 import {
   emptyBonusCounts,
@@ -154,4 +154,9 @@ export const blockers = {
   profiles: null as BlockerProfiles | null,
   // Blocker rects from the vision HUD alignment (Electron); used when no calibrated rect exists
   visionAlignment: null as VisionHudAlignment | null,
+}
+
+// Electron: screen reading health during a match, from the vision window's facts
+export const detection = {
+  health: null as DetectionHealth | null,
 }

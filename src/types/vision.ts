@@ -77,12 +77,21 @@ export interface VisionGameState {
   augmentCards: string[]
 }
 
+// Raw facts the vision window reports about itself; the background turns them into a detection status
+export interface VisionDetectionFacts {
+  capturing: boolean
+  // The bottom HUD group (shop, gold, XP, level) was located by an anchor in this match
+  hudVerified: boolean
+  shopVisible: boolean | null
+  goldRead: boolean
+}
+
 export interface VisionGroupTransform {
   scale: number
   offsetX: number
   offsetY: number
   score: number
-  source: 'anchor' | 'derived' | 'fallback'
+  source: 'anchor' | 'cached' | 'derived' | 'fallback'
 }
 
 export interface VisionAlignmentInfo {

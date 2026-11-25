@@ -1,6 +1,6 @@
 // Messages from the app's windows to the background controller
 import type { DebugGameEvent } from '../types/debug'
-import type { VisionGameState, VisionHudAlignment } from '../types/vision'
+import type { VisionDetectionFacts, VisionGameState, VisionHudAlignment } from '../types/vision'
 import { TFT_END_OF_GAME_MESSAGE_ID, TFT_LOG_EVENTS_MESSAGE_ID, type TftEndOfGameFile, type TftLogBatch } from '../platform/tft-log'
 import { deriveState } from './app-state'
 import { sendChecks } from './archipelago/checks'
@@ -12,6 +12,7 @@ import { client, platform } from './runtime'
 import { handleEndOfGameFile, handleTftLogBatch, syncVisionMatchState } from './session'
 import { handleDebugGameEvent } from './sources/debug'
 import { handleVisionGameState, handleVisionLayoutChanged } from './sources/vision'
+import { handleVisionDetection } from './sources/vision-health'
 import { windows } from './state'
 import {
   handleBlockerWindowMounted,
@@ -87,6 +88,9 @@ function handleMessage(id: string, content: Record<string, unknown>): void {
       break
     case 'VISION_HUD_ALIGNMENT':
       setVisionHudAlignment(content as unknown as VisionHudAlignment)
+      break
+    case 'VISION_DETECTION':
+      handleVisionDetection(content as unknown as VisionDetectionFacts)
       break
     case 'VISION_GAME_STATE':
       handleVisionGameState(content as unknown as VisionGameState)

@@ -44,5 +44,6 @@ export const DEFAULT_APP_STATE: AppState = {
   lockedMajorLocationIds: [],
   pinnedChecks: [],
   clientMatch: null,
+  detection: null,
   bonusItems: EMPTY_BONUS_ITEMS_STATE,
 }

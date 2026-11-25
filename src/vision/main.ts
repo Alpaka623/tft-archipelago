@@ -7,6 +7,7 @@ import {
   type VisionActionResult,
   type VisionCommand,
   type VisionDebugUpdate,
+  type VisionDetectionFacts,
   type VisionGameState,
   type VisionMatchState,
   type VisionRegionName,
@@ -56,6 +57,9 @@ const AUGMENT_HEADER_GONE_MIN_DISTANCE = 20
 // resend so the background recovers after reloads
 const GAME_STATE_HEARTBEAT_MS = 2000
 const MAX_TEMPLATES_PER_DIGIT = 6
+// Detection facts for the background's status; sent on change and at least this often
+const DETECTION_REPORT_INTERVAL_MS = 1000
+const DETECTION_HEARTBEAT_MS = 2000
 
 function requirePlatform(): Platform {
   if (!detectedPlatform) throw new Error('Vision window requires the Electron runtime')
@@ -88,6 +92,9 @@ const capture = new FrameCapture(platform, status, {
     analyzeTimer = null
     status.analyzedFps = 0
     resetReadings()
+    // The game process closed or switched windows: whatever comes next (with a League-client launch,
+    // the next match in a new process at the same resolution) has to confirm the HUD again
+    aligner.markUnverified()
   },
 })
 
@@ -109,6 +116,8 @@ let lastLayoutKey = ''
 let lastSentVisionStateKey = ''
 let lastVisionStateSentAt = 0
 let matchState: VisionMatchState = 'unknown'
+let lastDetectionKey = ''
+let lastDetectionSentAt = 0
 
 function createRegionStates(): Record<VisionRegionName, StableRegionState> {
   return Object.fromEntries(VISION_REGION_NAMES.map(name => [name, createRegionState()])) as Record<VisionRegionName, StableRegionState>
@@ -140,6 +149,22 @@ function sendVisionStateIfChanged(now: number): void {
   lastSentVisionStateKey = key
   lastVisionStateSentAt = now
   platform.sendMessage(BACKGROUND_WINDOW_ID, 'VISION_GAME_STATE', visionState)
+}
+
+// Runs on its own timer: the frame loop stops while nothing is captured, which is itself worth reporting
+function reportDetectionFacts(): void {
+  const facts: VisionDetectionFacts = {
+    capturing: status.capturing,
+    hudVerified: status.capturing && aligner.isHudVerified(),
+    shopVisible: visionState.shopVisible,
+    goldRead: visionState.gold !== null,
+  }
+  const now = performance.now()
+  const key = JSON.stringify(facts)
+  if (key === lastDetectionKey && now - lastDetectionSentAt < DETECTION_HEARTBEAT_MS) return
+  lastDetectionKey = key
+  lastDetectionSentAt = now
+  platform.sendMessage(BACKGROUND_WINDOW_ID, 'VISION_DETECTION', facts)
 }
 
 function drawLatestFrame(): boolean {
@@ -431,6 +456,10 @@ async function handleCommand(command: VisionCommand): Promise<void> {
         resetReadings()
         aligner.markUnverified()
         void capture.ensureCurrentSource()
+      } else if (matchState === 'in_match' && previous !== 'in_match') {
+        // League-client launches never pass the client menu ('unknown' -> 'in_match'); a new match
+        // can still use another HUD layout (Tocker's Trials vs. a normal match)
+        aligner.markUnverified()
       }
       return
     }
@@ -441,6 +470,8 @@ platform.onMessage((message) => {
   void handleCommand(message as VisionCommand)
 })
 platform.onGameStateChanged(({ state }) => capture.setGameRunning(state.isRunning))
+
+window.setInterval(reportDetectionFacts, DETECTION_REPORT_INTERVAL_MS)
 
 void calibration.load().then(async () => {
   platform.sendMessage(BACKGROUND_WINDOW_ID, 'VISION_READY', {})

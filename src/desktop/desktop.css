@@ -71,6 +71,7 @@ svg.tabler-icon {
 .small { font-size: 12px; }
 .tiny { font-size: 11px; }
 .text-ok { color: var(--ok); }
+.text-warn { color: var(--warn); }
 .text-bad { color: var(--bad); }
 
 .section-label {

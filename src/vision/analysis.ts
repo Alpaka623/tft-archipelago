@@ -25,6 +25,7 @@ export const GLYPH_GRID_HEIGHT = 14
 
 const MIN_GLYPH_WIDTH = 2
 const MIN_GLYPH_HEIGHT_RATIO = 0.4
+const MIN_THIN_GLYPH_HEIGHT_RATIO = 0.75
 const DIGIT_MATCH_MIN_SCORE = 0.8
 
 export function toGray(pixels: PixelData): GrayImage {
@@ -146,12 +147,17 @@ function findGlyphBounds(mask: Uint8Array, width: number, height: number): Glyph
         }
       }
     }
-    if (x1 - x0 + 1 >= MIN_GLYPH_WIDTH && y1 >= y0) glyphs.push({ x0, x1, y0, y1 })
+    if (y1 >= y0) glyphs.push({ x0, x1, y0, y1 })
   }
 
-  // Drop specks: real digits share roughly the height of the tallest glyph
-  const tallest = Math.max(0, ...glyphs.map(glyph => glyph.y1 - glyph.y0 + 1))
-  return glyphs.filter(glyph => glyph.y1 - glyph.y0 + 1 >= tallest * MIN_GLYPH_HEIGHT_RATIO)
+  // Drop specks: real digits share roughly the height of the tallest glyph. A single-column glyph is
+  // kept only next to wider glyphs and at almost their full height: the "1" of the XP label is 1 px
+  // wide at 1920x1080, and so is the "1" of the stage label at 2560x1440 (measured)
+  const heightOf = (glyph: GlyphBounds) => glyph.y1 - glyph.y0 + 1
+  const isThin = (glyph: GlyphBounds) => glyph.x1 - glyph.x0 + 1 < MIN_GLYPH_WIDTH
+  const tallest = Math.max(0, ...glyphs.filter(glyph => !isThin(glyph)).map(heightOf))
+  if (tallest === 0) return []
+  return glyphs.filter(glyph => heightOf(glyph) >= tallest * (isThin(glyph) ? MIN_THIN_GLYPH_HEIGHT_RATIO : MIN_GLYPH_HEIGHT_RATIO))
 }
 
 function toGrid(mask: Uint8Array, width: number, bounds: GlyphBounds): GlyphGrid {
